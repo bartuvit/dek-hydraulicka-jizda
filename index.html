@@ -218,7 +218,26 @@ table.scores td.s{text-align:right;font-weight:700;font-variant-numeric:tabular-
 table.scores td.d{text-align:right;width:5em;color:#7f7c74;font-variant-numeric:tabular-nums}
 table.scores tr.me td{color:var(--dek-red)}
 table.scores tr.me td.s{color:var(--dek-red)}
-.scorewrap{width:100%;max-height:34vh;overflow-y:auto}
+.scorewrap{width:100%;max-height:32vh;overflow-y:auto}
+.tabs{display:flex;gap:6px}
+.tab{
+  font-family:"Barlow Condensed",sans-serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  background:transparent;color:#7f7c74;border:1px solid var(--line);border-radius:2px;
+  padding:6px 14px;cursor:pointer;
+}
+.tab:hover{color:var(--concrete)}
+.tab.is-on{color:var(--ink);background:var(--hi-vis);border-color:var(--hi-vis);font-weight:700}
+.toplist{
+  width:100%;max-width:330px;display:flex;flex-direction:column;gap:3px;
+  font-family:"Barlow Condensed",sans-serif;font-size:15px;
+}
+.toplist .th{
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#7f7c74;
+  font-weight:700;margin-bottom:1px;
+}
+.toplist .r{display:flex;gap:9px;align-items:baseline;border-bottom:1px dashed rgba(203,199,189,.14);padding-bottom:2px}
+.toplist .r .p{color:var(--hi-vis);font-weight:700;width:1.4em}
+.toplist .r .s{margin-left:auto;font-weight:700;color:#f2efe7;font-variant-numeric:tabular-nums}
 #toggles{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}
 #toggles button{
   font-family:"Barlow Condensed",sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
@@ -260,6 +279,7 @@ table.scores tr.me td.s{color:var(--dek-red)}
           <li><span><kbd>P</kbd></span><span class="hint">pauza</span></li>
           <li><span class="hint">na mobilu</span><span class="hint">tahej prstem</span></li>
         </ul>
+        <div class="toplist" id="topOnline" hidden></div>
         <button class="btn ghost" id="btnScoresFromStart" type="button">Nejlepší jízdy</button>
       </section>
 
@@ -298,9 +318,14 @@ table.scores tr.me td.s{color:var(--dek-red)}
       <!-- SCORES -->
       <section class="screen" id="scrScores" hidden>
         <h1 class="logo" style="font-size:36px">Nejlepší<em style="font-size:1.05em">Jízdy</em></h1>
+        <div class="tabs">
+          <button class="tab is-on" id="tabOnline" type="button">Online</button>
+          <button class="tab" id="tabLocal" type="button">Tento počítač</button>
+        </div>
+        <p class="hint" id="scoreStatus">&nbsp;</p>
         <div class="scorewrap"><table class="scores"><tbody id="scoreBody"></tbody></table></div>
         <button class="btn" id="btnBack" type="button">Zpět</button>
-        <button class="btn ghost" id="btnClear" type="button">Vymazat tabulku</button>
+        <button class="btn ghost" id="btnClear" type="button">Vymazat tuhle tabulku</button>
       </section>
     </div>
   </div>
@@ -353,6 +378,14 @@ table.scores tr.me td.s{color:var(--dek-red)}
    DEK — Hydraulická jízda
    Top-down arkáda ve stylu GTA2. Vše kresleno proceduálně.
    ============================================================ */
+
+/* ============================================================
+   ONLINE ŽEBŘÍČEK
+   Sem vlož adresu webové aplikace z Google Apps Scriptu
+   (končí na /exec). Dokud je prázdná, hraje se jen s místní
+   tabulkou uloženou v prohlížeči.
+   ============================================================ */
+const LEADERBOARD_URL = 'https://script.google.com/macros/s/AKfycbwfisWfW4bmbg6y_IwpiJ16jX3XezkOksKhllempbQ4A5wsGmRm6cHTsBOooUto3RjC/exec';
 
 const W = 480, H = 800;
 const cv  = document.getElementById('game');
@@ -1639,6 +1672,12 @@ const screens={
 function showScreen(name){
   for(const k in screens) screens[k].hidden = (k!==name);
   overlay.hidden = !name;
+  clearInterval(scoreTimer); scoreTimer=null;
+  if(name==='scores'){
+    renderScores();
+    if(scoreTab==='online') fetchOnline();
+    scoreTimer = setInterval(()=>{ if(scoreTab==='online') fetchOnline(); }, 15000);
+  }
 }
 
 function startRun(){
@@ -1698,24 +1737,110 @@ function saveScores(a){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(a.slice(0,10))); }catch(e){}
 }
 let lastSavedStamp=null;
+
+/* ---------- online část ---------- */
+let onlineScores=null, onlineState='idle', scoreTab='online', scoreTimer=null;
+
+function withTimeout(ms){
+  const c=new AbortController();
+  setTimeout(()=>c.abort(), ms);
+  return c.signal;
+}
+async function fetchOnline(){
+  if(!LEADERBOARD_URL) { onlineState='off'; return; }
+  onlineState = onlineScores ? 'refreshing' : 'loading';
+  renderScores();
+  try{
+    const r = await fetch(LEADERBOARD_URL + '?action=top&n=25&t=' + Date.now(),
+                          {cache:'no-store', signal:withTimeout(9000)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    onlineScores = Array.isArray(j.scores) ? j.scores : [];
+    onlineState = 'ok';
+  }catch(err){
+    onlineState = 'error';
+  }
+  renderScores(); renderTopThree();
+}
+async function submitOnline(entry){
+  if(!LEADERBOARD_URL) return false;
+  const q = new URLSearchParams({
+    action:'add', name:entry.name, score:entry.score,
+    km:entry.km.toFixed(2), items:entry.items, stage:entry.stage
+  });
+  try{
+    const r = await fetch(LEADERBOARD_URL + '?' + q.toString(),
+                          {cache:'no-store', signal:withTimeout(9000)});
+    const j = await r.json();
+    return !!j.ok;
+  }catch(err){ return false; }
+}
+
+function renderTopThree(){
+  const host=document.getElementById('topOnline');
+  if(!LEADERBOARD_URL || onlineState!=='ok' || !onlineScores || !onlineScores.length){
+    host.hidden=true; return;
+  }
+  host.hidden=false; host.innerHTML='';
+  const h=document.createElement('div'); h.className='th'; h.textContent='Online žebříček';
+  host.appendChild(h);
+  onlineScores.slice(0,3).forEach((r,i)=>{
+    const d=document.createElement('div'); d.className='r';
+    const p=document.createElement('span'); p.className='p'; p.textContent=(i+1)+'.';
+    const n=document.createElement('span'); n.textContent=r.name;
+    const sc=document.createElement('span'); sc.className='s'; sc.textContent=r.score;
+    d.append(p,n,sc); host.appendChild(d);
+  });
+}
+
+function setScoreTab(tab){
+  scoreTab=tab;
+  document.getElementById('tabOnline').classList.toggle('is-on', tab==='online');
+  document.getElementById('tabLocal').classList.toggle('is-on', tab==='local');
+  document.getElementById('btnClear').hidden = (tab==='online');
+  renderScores();
+  if(tab==='online' && onlineState!=='loading') fetchOnline();
+}
+
 function renderScores(){
-  const list=loadScores();
   const tb=document.getElementById('scoreBody');
+  const st=document.getElementById('scoreStatus');
   tb.innerHTML='';
+  const online = scoreTab==='online';
+  let list=[];
+
+  if(online){
+    if(!LEADERBOARD_URL){
+      st.textContent='Online žebříček zatím není nastavený';
+      list=[];
+    } else if(onlineState==='loading'){
+      st.textContent='Načítám…'; list=[];
+    } else if(onlineState==='error'){
+      st.textContent='Server neodpovídá — zkus to za chvíli';
+      list=[];
+    } else {
+      st.textContent = onlineState==='refreshing' ? 'Aktualizuji…' : 'Společné pořadí všech hráčů';
+      list = onlineScores||[];
+    }
+  } else {
+    st.textContent='Uloženo jen v tomhle prohlížeči';
+    list = loadScores();
+  }
+
   if(!list.length){
-    const tr=document.createElement('tr');
-    const td=document.createElement('td');
+    const tr=document.createElement('tr'), td=document.createElement('td');
     td.colSpan=4; td.style.textAlign='center'; td.style.color='#7f7c74';
-    td.textContent='Zatím žádná zapsaná jízda.';
+    td.textContent = online ? '—' : 'Zatím žádná zapsaná jízda.';
     tr.appendChild(td); tb.appendChild(tr); return;
   }
   list.forEach((r,i)=>{
     const tr=document.createElement('tr');
-    if(r.stamp && r.stamp===lastSavedStamp) tr.className='me';
+    if(!online && r.stamp && r.stamp===lastSavedStamp) tr.className='me';
+    if(online && lastSavedStamp && r.name===lastSavedStamp.split('|')[2]) tr.className='me';
     const c=(cls,txt)=>{ const td=document.createElement('td'); td.className=cls; td.textContent=txt; return td; };
     tr.appendChild(c('p',(i+1)+'.'));
     tr.appendChild(c('n',r.name));
-    tr.appendChild(c('d',(r.km||0).toFixed(1)+' km'));
+    tr.appendChild(c('d',(Number(r.km)||0).toFixed(1)+' km'));
     tr.appendChild(c('s',r.score));
     tb.appendChild(tr);
   });
@@ -1734,8 +1859,11 @@ document.getElementById('btnSound').addEventListener('click', toggleSound);
 document.getElementById('btnQuit').addEventListener('click', ()=>{
   Sfx.stopEngine(); game.state='menu'; resetGame(); showScreen('start');
 });
+document.getElementById('tabOnline').addEventListener('click', ()=>setScoreTab('online'));
+document.getElementById('tabLocal').addEventListener('click', ()=>setScoreTab('local'));
+
 document.getElementById('btnScoresFromStart').addEventListener('click', ()=>{
-  renderScores(); game.state='scores'; showScreen('scores');
+  game.state='scores'; showScreen('scores');
 });
 document.getElementById('btnBack').addEventListener('click', ()=>{
   if(game.lives<=0 && game.dist>0){ showScreen('over'); game.state='over'; }
@@ -1760,13 +1888,25 @@ document.getElementById('btnCopy').addEventListener('click', async ()=>{
 document.getElementById('saveForm').addEventListener('submit', e=>{
   e.preventDefault();
   const name=driverName();
+  const entry={name, score:game.score, km:game.km, items:game.items, stage:game.stage};
   const list=loadScores();
   lastSavedStamp = game.score+'|'+game.km.toFixed(2)+'|'+name;
-  list.push({name, score:game.score, km:game.km, stamp:lastSavedStamp});
+  list.push({name, score:entry.score, km:entry.km, stamp:lastSavedStamp});
   list.sort((a,b)=>b.score-a.score);
   saveScores(list);
   document.getElementById('saveForm').hidden=true;
-  renderScores(); game.state='scores'; showScreen('scores');
+
+  if(LEADERBOARD_URL){
+    setScoreTab('online');
+    submitOnline(entry).then(ok=>{
+      if(ok) setTimeout(fetchOnline, 900);
+      else document.getElementById('scoreStatus').textContent =
+             'Výsledek se nepodařilo odeslat — uložen aspoň sem do prohlížeče';
+    });
+  } else {
+    setScoreTab('local');
+  }
+  game.state='scores'; showScreen('scores');
 });
 
 document.addEventListener('visibilitychange', ()=>{
@@ -1779,6 +1919,13 @@ document.addEventListener('visibilitychange', ()=>{
 fit();
 resetGame();
 renderAllIcons();
+if(!LEADERBOARD_URL){
+  document.querySelector('.tabs').hidden = true;
+  scoreTab = 'local';
+  document.getElementById('tabLocal').classList.add('is-on');
+} else {
+  fetchOnline();
+}
 showScreen('start');
 if(document.fonts && document.fonts.ready){
   document.fonts.ready.then(()=>{ render(); renderAllIcons(); });
