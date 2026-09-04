@@ -1741,38 +1741,57 @@ let lastSavedStamp=null;
 /* ---------- online část ---------- */
 let onlineScores=null, onlineState='idle', scoreTab='online', scoreTimer=null;
 
-function withTimeout(ms){
-  const c=new AbortController();
-  setTimeout(()=>c.abort(), ms);
-  return c.signal;
+/* Volání přes JSONP — script tag obchází CORS, na který fetch u Apps Scriptu naráží. */
+let jsonpSeq = 0;
+function jsonp(params, timeoutMs){
+  return new Promise(function(resolve, reject){
+    if(!LEADERBOARD_URL) return reject(new Error('bez adresy'));
+    const cb = 'dekcb' + (++jsonpSeq) + '_' + Date.now();
+    const el = document.createElement('script');
+    let done = false;
+    const cleanup = function(){
+      try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+      if(el.parentNode) el.parentNode.removeChild(el);
+    };
+    const timer = setTimeout(function(){
+      if(done) return; done = true; cleanup(); reject(new Error('timeout'));
+    }, timeoutMs || 12000);
+    window[cb] = function(data){
+      if(done) return; done = true; clearTimeout(timer); cleanup(); resolve(data);
+    };
+    el.onerror = function(){
+      if(done) return; done = true; clearTimeout(timer); cleanup(); reject(new Error('network'));
+    };
+    const q = new URLSearchParams(params);
+    q.set('callback', cb);
+    q.set('t', String(Date.now()));
+    el.src = LEADERBOARD_URL + '?' + q.toString();
+    document.head.appendChild(el);
+  });
 }
+
 async function fetchOnline(){
   if(!LEADERBOARD_URL) { onlineState='off'; return; }
   onlineState = onlineScores ? 'refreshing' : 'loading';
   renderScores();
   try{
-    const r = await fetch(LEADERBOARD_URL + '?action=top&n=25&t=' + Date.now(),
-                          {cache:'no-store', signal:withTimeout(9000)});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const j = await r.json();
-    onlineScores = Array.isArray(j.scores) ? j.scores : [];
+    const j = await jsonp({action:'top', n:25});
+    onlineScores = (j && Array.isArray(j.scores)) ? j.scores : [];
     onlineState = 'ok';
   }catch(err){
     onlineState = 'error';
   }
   renderScores(); renderTopThree();
 }
+
 async function submitOnline(entry){
   if(!LEADERBOARD_URL) return false;
-  const q = new URLSearchParams({
-    action:'add', name:entry.name, score:entry.score,
-    km:entry.km.toFixed(2), items:entry.items, stage:entry.stage
-  });
   try{
-    const r = await fetch(LEADERBOARD_URL + '?' + q.toString(),
-                          {cache:'no-store', signal:withTimeout(9000)});
-    const j = await r.json();
-    return !!j.ok;
+    const j = await jsonp({
+      action:'add', name:entry.name, score:entry.score,
+      km:entry.km.toFixed(2), items:entry.items, stage:entry.stage
+    });
+    return !!(j && j.ok);
   }catch(err){ return false; }
 }
 
