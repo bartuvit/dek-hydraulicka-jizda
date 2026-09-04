@@ -250,7 +250,7 @@ table.scores tr.me td.s{color:var(--dek-red)}
       <section class="screen" id="scrStart">
         <h1 class="logo">Hydraulická<em>Jízda</em></h1>
         <p class="tag">Stavebniny DEK &middot; divize doprava</p>
-        <p class="blurb">Naber palety hydraulickou rukou za jízdy, vyhni se zdem, stromům a sloupům. Čtyři pneumatiky = čtyři životy.</p>
+        <p class="blurb">Naber palety hydraulickou rukou za jízdy, vyhni se zdem, stromům a sloupům. Každý úsek se jede rychleji. Čtyři pneumatiky = čtyři životy.</p>
         <button class="btn" id="btnStart" type="button">Nastartovat</button>
         <ul class="keylist">
           <li><span><kbd>◀</kbd><kbd>▶</kbd></span><span class="hint">řízení</span></li>
@@ -276,6 +276,7 @@ table.scores tr.me td.s{color:var(--dek-red)}
           <div><span class="k">Body</span><span class="v big" id="ovScore">0</span></div>
           <div><span class="k">Kilometry</span><span class="v" id="ovKm">0</span></div>
           <div><span class="k">Náklad</span><span class="v" id="ovItems">0</span></div>
+          <div><span class="k">Úsek</span><span class="v" id="ovStage">1</span></div>
         </div>
         <p class="hint" id="ovBreak"></p>
         <form class="nameform" id="saveForm">
@@ -325,6 +326,7 @@ table.scores tr.me td.s{color:var(--dek-red)}
 
     <div class="sec-label">Sazebník</div>
     <div class="row">Ujetá vzdálenost<span class="val">40 bodů / km</span></div>
+    <div class="row">Nový úsek<span class="val">každých 1,5 km</span></div>
     <div class="rule thin"></div>
 
     <div class="sec-label">Ovládání</div>
@@ -456,7 +458,8 @@ const Sfx = {
     this.blip(140,0.3,'sawtooth',0.14,60);
   },
   over(){ [330,262,196,131].forEach((f,i)=> setTimeout(()=>this.blip(f,0.32,'sawtooth',0.15), i*150)); },
-  milestone(){ this.blip(880,0.1,'sine',0.1); setTimeout(()=>this.blip(1320,0.14,'sine',0.09),90); }
+  milestone(){ this.blip(880,0.1,'sine',0.1); setTimeout(()=>this.blip(1320,0.14,'sine',0.09),90); },
+  stageUp(){ [392,523,659,784].forEach((f,i)=> setTimeout(()=>this.blip(f,0.2,'square',0.12), i*95)); }
 };
 
 /* ------------------------------------------------------------
@@ -506,8 +509,14 @@ const game = {
   dist:0, km:0, items:0, cargoPts:0, score:0,
   lives:START_LIVES, diff:0, speed:300, throttle:0,
   shake:0, flash:0, nextSpawn:0, nextBonus:1500,
-  nightT:0, lastMilestone:0, time:0
+  nightT:0, lastMilestone:0, time:0,
+  stage:1, banner:null
 };
+
+const STAGE_NOTES = [
+  'Přidáváme plyn', 'Přibývá překážek', 'Pozor na zdi',
+  'Provoz houstne', 'Držte se v pruhu', 'Plný náklad, plná rychlost'
+];
 
 const truck = {
   x:laneX(1), y:648, w:54, len:104, vx:0, tilt:0,
@@ -521,6 +530,7 @@ function resetGame(){
   game.lives=START_LIVES; game.diff=0; game.speed=300; game.throttle=0;
   game.shake=0; game.flash=0; game.nextSpawn=260; game.nextBonus=1600;
   game.nightT=0; game.lastMilestone=0; game.time=0;
+  game.stage=1; game.banner=null;
   truck.x=laneX(1); truck.vx=0; truck.tilt=0; truck.invuln=0;
   truck.load=[]; truck.armAng=Math.PI/2; truck.armTarget=Math.PI/2; truck.armHold=0; truck.bounce=0;
   ents=[]; decor=[]; flying=[]; parts=[]; floats=[];
@@ -562,10 +572,10 @@ function spawnRow(){
   const d=game.diff;
   const grace = game.dist < 900;      // rozjezd bez překážek
   let obs=0;
-  const maxObs = grace ? 0 : 1 + Math.floor(Math.random()*(1 + d*1.9));
+  const maxObs = grace ? 0 : 1 + Math.floor(Math.random()*(1 + d*2.2));
 
   // zeď přes dva pruhy
-  if(!grace && Math.random() < 0.20 + d*0.14){
+  if(!grace && Math.random() < 0.18 + d*0.22){
     const i=(Math.random()*3)|0;
     if(free[i] && free[i+1] && countFree(free)-2 >= 1){
       free[i]=free[i+1]=false; obs+=2;
@@ -637,7 +647,16 @@ function collect(e){
 
 function update(dt){
   game.time += dt;
-  game.diff = clamp(game.km/12, 0, 1);
+  // roste stále, ale se zpomalujícím se přírůstkem — nikdy neskočí do nehratelna
+  game.diff = 1 - Math.pow(0.82, game.km/1.5);
+
+  const st = 1 + Math.floor(game.km/1.5);
+  if(st > game.stage){
+    game.stage = st;
+    game.banner = {txt:'ÚSEK '+st, sub:STAGE_NOTES[(st-2)%STAGE_NOTES.length], t:2.3};
+    Sfx.stageUp();
+  }
+  if(game.banner){ game.banner.t -= dt; if(game.banner.t<=0) game.banner=null; }
 
   // rychlost
   let th = 0;
@@ -645,12 +664,12 @@ function update(dt){
   if(keys.arrowdown||keys.s) th -= 1;
   if(pointerActive) th = clamp(th + pointerThrottle, -1, 1);
   game.throttle = lerp(game.throttle, th, 1-Math.pow(0.002,dt));
-  const base = 300 + 250*game.diff;
+  const base = Math.min(650, 290 + 320*game.diff + Math.max(0, game.km-9)*6);
   const want = base * (1 + 0.3*game.throttle);
   game.speed = lerp(game.speed, want, 1-Math.pow(0.08,dt));
 
   // řízení
-  const maxVx = 330 + 90*game.diff;
+  const maxVx = 330 + 140*game.diff;
   let vxWant = 0;
   if(keys.arrowleft||keys.a) vxWant -= maxVx;
   if(keys.arrowright||keys.d) vxWant += maxVx;
@@ -678,7 +697,7 @@ function update(dt){
   game.nextSpawn -= game.speed*dt;
   if(game.nextSpawn<=0){
     spawnRow();
-    game.nextSpawn = Math.max(250, 470 - 190*game.diff) + rnd(90,-40);
+    game.nextSpawn = Math.max(240, 480 - 250*game.diff) + rnd(90,-40);
   }
   if(Math.random() < dt*2.6) decor.push(mkDecor(-160));
 
@@ -1241,6 +1260,8 @@ function drawHUD(){
   setLS('2px');
   ctx.fillStyle=C.hiVis; ctx.font='600 15px "Barlow Condensed", sans-serif';
   ctx.fillText(game.km.toFixed(2)+' KM', 24+sw, 48);
+  ctx.fillStyle='#8f8b82'; ctx.font='600 13px "Barlow Condensed", sans-serif';
+  ctx.fillText('ÚSEK '+game.stage, 24+sw, 66);
   setLS('0px');
 
   // pneumatiky
@@ -1272,6 +1293,26 @@ function drawHUD(){
   ctx.fillStyle=C.white; ctx.font='20px Anton, Impact, sans-serif';
   ctx.fillText(String(game.items),W-18,by-6);
   ctx.textAlign='left';
+  ctx.restore();
+}
+
+function drawBanner(){
+  const b=game.banner; if(!b) return;
+  const a = b.t>1.9 ? (2.3-b.t)/0.4 : Math.min(1, b.t/0.6);
+  ctx.save();
+  ctx.globalAlpha=clamp(a,0,1);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const y=286;
+  ctx.fillStyle='rgba(11,12,14,.72)'; ctx.fillRect(0,y-38,W,76);
+  ctx.fillStyle=C.hiVis; ctx.fillRect(0,y-38,W,3); ctx.fillRect(0,y+35,W,3);
+  ctx.fillStyle='rgba(0,0,0,.6)';
+  fitText(b.txt, W/2+2, y-8+2, W-60, 40, 'Anton, Impact, sans-serif');
+  ctx.fillStyle=C.hiVis;
+  fitText(b.txt, W/2, y-8, W-60, 40, 'Anton, Impact, sans-serif');
+  setLS('3px');
+  ctx.fillStyle=C.white; ctx.font='600 15px "Barlow Condensed", sans-serif';
+  ctx.fillText(b.sub.toUpperCase(), W/2, y+19);
+  setLS('0px');
   ctx.restore();
 }
 
@@ -1350,6 +1391,7 @@ function render(){
   }
 
   drawFloats();
+  drawBanner();
   ctx.restore();
 
   if(game.flash>0.01){
@@ -1445,7 +1487,7 @@ function driverName(){
 function updateShareText(){
   document.getElementById('ovShare').value =
     'DEK Hydraulická jízda — ' + driverName() + ': ' + game.score + ' bodů, ' +
-    game.km.toFixed(2).replace('.',',') + ' km, ' + game.items + ' naložených kusů';
+    game.km.toFixed(2).replace('.',',') + ' km, ' + game.items + ' naložených kusů, úsek ' + game.stage;
 }
 
 function endRun(){
@@ -1454,6 +1496,7 @@ function endRun(){
   document.getElementById('ovScore').textContent = game.score;
   document.getElementById('ovKm').textContent = game.km.toFixed(2);
   document.getElementById('ovItems').textContent = game.items;
+  document.getElementById('ovStage').textContent = game.stage;
   updateShareText();
   const best = loadScores()[0];
   const el=document.getElementById('ovBreak');
