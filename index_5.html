@@ -1,0 +1,1577 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#23262b">
+<title>DEK Hydraulická jízda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{
+  --asphalt:#23262b;
+  --asphalt-deep:#141619;
+  --ink:#0b0c0e;
+  --dek-red:#e2001a;
+  --dek-red-dk:#9d0013;
+  --hi-vis:#f5c518;
+  --concrete:#cbc7bd;
+  --concrete-dim:#8b887f;
+  --line:#3a3e45;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:
+    radial-gradient(120% 90% at 50% -10%, #32363d 0%, var(--asphalt) 45%, var(--asphalt-deep) 100%);
+  color:var(--concrete);
+  font-family:"Barlow","Segoe UI",system-ui,sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+#cabinet{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:26px;
+  padding:18px;
+}
+#frame{
+  position:relative;
+  padding:9px;
+  border-radius:3px;
+  background:repeating-linear-gradient(45deg,var(--hi-vis) 0 15px,var(--ink) 15px 30px);
+  box-shadow:0 30px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.5);
+  flex:0 0 auto;
+}
+#game{
+  display:block;
+  background:#2f3339;
+  aspect-ratio:3/5;
+  width:min(564px, calc(90vh * 0.6), calc(100vw - 340px));
+  height:auto;
+  touch-action:none;
+  border-radius:1px;
+}
+/* ---------- side panel : dodací list ---------- */
+#docket{
+  flex:0 0 268px;
+  align-self:stretch;
+  max-height:min(90vh,940px);
+  margin:auto 0;
+  background:#efece3;
+  color:#1d1f22;
+  border-radius:2px;
+  padding:18px 18px 20px;
+  box-shadow:0 24px 50px rgba(0,0,0,.5);
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  overflow-y:auto;
+  font-family:"Barlow Condensed","Barlow",sans-serif;
+}
+#docket h2{
+  margin:0;
+  font-family:"Anton",Impact,sans-serif;
+  font-size:26px;
+  letter-spacing:.02em;
+  line-height:.95;
+  text-transform:uppercase;
+}
+#docket h2 span{color:var(--dek-red)}
+.docket-sub{
+  font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:#6f6c64;margin-top:4px;font-weight:600;
+}
+.rule{height:2px;background:#1d1f22;opacity:.85}
+.rule.thin{height:1px;opacity:.25}
+.sec-label{
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:#8a867c;
+}
+/* hlavička skupiny: co nakládat vs. čemu se vyhnout */
+.sec-head{
+  display:flex;align-items:center;gap:7px;
+  font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;
+}
+.sec-head span:nth-child(2){white-space:nowrap}
+.sec-head .mark{
+  width:17px;height:17px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;line-height:1;
+  font-family:"Barlow",sans-serif;font-size:12px;font-weight:700;
+}
+.sec-head.take{color:#8a6d00}
+.sec-head.take .mark{background:var(--hi-vis);color:#1d1f22}
+.sec-head.avoid{color:var(--dek-red)}
+.sec-head.avoid .mark{background:var(--dek-red);color:#fff}
+.sec-head .pts{
+  margin-left:auto;font-size:12px;font-weight:600;letter-spacing:.06em;
+  text-transform:none;color:#8a867c;white-space:nowrap;
+}
+canvas.ico{
+  display:block;width:48px;height:33px;flex:0 0 auto;
+  background:rgba(29,31,34,.05);border-radius:2px;
+}
+.row{
+  display:flex;align-items:center;gap:8px;
+  font-size:15.5px;line-height:1.1;
+}
+.row .val{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row.bonus{color:var(--dek-red)}
+.row.bonus .val{color:var(--dek-red)}
+.row.bonus .val em{
+  font-style:normal;font-size:11px;letter-spacing:.06em;
+  background:var(--dek-red);color:#fff;border-radius:2px;padding:1px 4px;margin-right:5px;
+}
+
+.keys{display:flex;flex-wrap:wrap;gap:6px}
+.keylist{
+  list-style:none;margin:2px 0 0;padding:0;width:100%;max-width:280px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.keylist li{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-bottom:1px dashed rgba(203,199,189,.16);padding-bottom:5px;
+}
+.keylist li span:first-child{display:flex;gap:5px}
+kbd{
+  font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:700;
+  background:#1d1f22;color:#efece3;border-radius:3px;padding:3px 8px;letter-spacing:.04em;
+}
+.stamp{
+  margin-top:6px;align-self:flex-start;
+  border:2.5px solid var(--dek-red);color:var(--dek-red);
+  font-family:"Anton",Impact,sans-serif;font-size:15px;letter-spacing:.14em;
+  padding:5px 10px;transform:rotate(-6deg);opacity:.9;text-transform:uppercase;
+}
+/* ---------- overlays ---------- */
+#overlay{
+  position:absolute;inset:9px;
+  display:flex;align-items:center;justify-content:center;
+  padding:22px;
+  background:rgba(11,12,14,.82);
+  backdrop-filter:blur(3px);
+  text-align:center;
+}
+#overlay[hidden]{display:none}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.screen[hidden]{display:none}
+.logo{
+  font-family:"Anton",Impact,sans-serif;
+  font-size:clamp(38px,9vw,58px);
+  line-height:.86;letter-spacing:.01em;text-transform:uppercase;
+  color:#f2efe7;margin:0;
+}
+.logo em{font-style:normal;color:var(--dek-red);display:block;font-size:1.5em;letter-spacing:.04em}
+.tag{
+  font-family:"Barlow Condensed",sans-serif;
+  font-size:14px;letter-spacing:.22em;text-transform:uppercase;color:var(--hi-vis);
+  margin:0;font-weight:600;
+}
+.blurb{font-size:15px;line-height:1.5;color:#b7b3aa;margin:0;max-width:32ch}
+button.btn{
+  font-family:"Anton",Impact,sans-serif;font-size:20px;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--dek-red);color:#fff;border:0;border-radius:2px;
+  padding:13px 28px;cursor:pointer;
+  box-shadow:0 5px 0 var(--dek-red-dk);
+  transition:transform .08s ease, box-shadow .08s ease, background .12s ease;
+}
+button.btn:hover{background:#ff1226}
+button.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--dek-red-dk)}
+button.btn.ghost{
+  background:transparent;color:var(--concrete);box-shadow:inset 0 0 0 2px var(--line);
+  font-size:15px;padding:9px 18px;
+}
+button.btn.ghost:hover{color:#fff;box-shadow:inset 0 0 0 2px var(--hi-vis)}
+button.btn.ghost:active{transform:none;box-shadow:inset 0 0 0 2px var(--hi-vis)}
+:focus-visible{outline:3px solid var(--hi-vis);outline-offset:2px}
+.hint{font-family:"Barlow Condensed",sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#7f7c74}
+#overlay{overflow-y:auto}
+.result{display:flex;gap:24px;justify-content:center;align-items:flex-end}
+.result div{display:flex;flex-direction:column;gap:3px;align-items:center}
+.result .k{font-family:"Barlow Condensed",sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#87837b}
+.result .v{font-family:"Anton",Impact,sans-serif;font-size:34px;line-height:1;color:#f2efe7;font-variant-numeric:tabular-nums}
+.result .v.big{font-size:50px;color:var(--hi-vis);line-height:.86}
+.nameform{display:flex;gap:8px;width:100%;max-width:300px}
+.nameform input{
+  flex:1;min-width:0;background:#1b1d21;border:2px solid var(--line);color:#f2efe7;
+  font-family:"Barlow Condensed",sans-serif;font-size:18px;letter-spacing:.14em;text-transform:uppercase;
+  padding:9px 12px;border-radius:2px;
+}
+.nameform input:focus{border-color:var(--hi-vis);outline:none}
+.share{display:flex;flex-direction:column;gap:6px;width:100%;max-width:330px}
+.share-row{display:flex;gap:8px;width:100%}
+.share-row input{
+  flex:1;min-width:0;background:#15171a;border:1px solid var(--line);color:#b7b3aa;
+  font-family:"Barlow Condensed",sans-serif;font-size:13.5px;padding:8px 10px;border-radius:2px;
+}
+.share-row input:focus{border-color:var(--hi-vis);outline:none;color:#f2efe7}
+.share-row .btn.ghost{font-size:13px;padding:8px 12px;white-space:nowrap}
+table.scores{width:100%;border-collapse:collapse;font-family:"Barlow Condensed",sans-serif;font-size:16px}
+table.scores td{padding:3px 0;border-bottom:1px dashed #3a3e45}
+table.scores td.p{width:2.2em;color:var(--hi-vis);font-weight:700}
+table.scores td.s{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:#f2efe7}
+table.scores td.d{text-align:right;width:5em;color:#7f7c74;font-variant-numeric:tabular-nums}
+table.scores tr.me td{color:var(--dek-red)}
+table.scores tr.me td.s{color:var(--dek-red)}
+.scorewrap{width:100%;max-height:34vh;overflow-y:auto}
+#toggles{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5}
+#toggles button{
+  font-family:"Barlow Condensed",sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  background:rgba(11,12,14,.6);color:#b7b3aa;border:1px solid rgba(203,199,189,.22);
+  border-radius:2px;padding:5px 10px;cursor:pointer;
+}
+#toggles button:hover{color:var(--hi-vis);border-color:var(--hi-vis)}
+@media (max-width:940px){
+  #docket{display:none}
+  #cabinet{padding:8px;gap:0}
+  #game{width:min(calc(100vw - 34px), calc((100vh - 34px) * 0.6))}
+  .screen{gap:10px}
+  .logo{font-size:clamp(30px,7.6vw,44px)}
+}
+@media (prefers-reduced-motion:reduce){
+  button.btn{transition:none}
+}
+</style>
+
+<div id="cabinet">
+  <div id="frame">
+    <canvas id="game" width="480" height="800" aria-label="Herní plocha – jízda s nákladním autem"></canvas>
+
+    <div id="toggles">
+      <button id="btnSound" type="button">Zvuk: zap</button>
+      <button id="btnPause" type="button">Pauza</button>
+    </div>
+
+    <div id="overlay">
+      <!-- START -->
+      <section class="screen" id="scrStart">
+        <h1 class="logo">Hydraulická<em>Jízda</em></h1>
+        <p class="tag">Stavebniny DEK &middot; divize doprava</p>
+        <p class="blurb">Naber palety hydraulickou rukou za jízdy, vyhni se zdem, stromům a sloupům. Čtyři pneumatiky = čtyři životy.</p>
+        <button class="btn" id="btnStart" type="button">Nastartovat</button>
+        <ul class="keylist">
+          <li><span><kbd>◀</kbd><kbd>▶</kbd></span><span class="hint">řízení</span></li>
+          <li><span><kbd>▲</kbd><kbd>▼</kbd></span><span class="hint">plyn / brzda</span></li>
+          <li><span><kbd>P</kbd></span><span class="hint">pauza</span></li>
+          <li><span class="hint">na mobilu</span><span class="hint">tahej prstem</span></li>
+        </ul>
+        <button class="btn ghost" id="btnScoresFromStart" type="button">Nejlepší jízdy</button>
+      </section>
+
+      <!-- PAUSE -->
+      <section class="screen" id="scrPause" hidden>
+        <h1 class="logo" style="font-size:44px">Stojíme</h1>
+        <p class="tag">motor běží naprázdno</p>
+        <button class="btn" id="btnResume" type="button">Pokračovat</button>
+        <button class="btn ghost" id="btnQuit" type="button">Ukončit jízdu</button>
+      </section>
+
+      <!-- GAME OVER -->
+      <section class="screen" id="scrOver" hidden>
+        <h1 class="logo" style="font-size:40px">Konec<em style="font-size:1.1em">Jízdy</em></h1>
+        <div class="result">
+          <div><span class="k">Body</span><span class="v big" id="ovScore">0</span></div>
+          <div><span class="k">Kilometry</span><span class="v" id="ovKm">0</span></div>
+          <div><span class="k">Náklad</span><span class="v" id="ovItems">0</span></div>
+        </div>
+        <p class="hint" id="ovBreak"></p>
+        <form class="nameform" id="saveForm">
+          <input id="ovName" maxlength="10" placeholder="Řidič" autocomplete="off" aria-label="Jméno řidiče">
+          <button class="btn" type="submit" style="font-size:16px;padding:9px 16px">Zapsat</button>
+        </form>
+        <div class="share">
+          <label class="hint" for="ovShare">Pošli výsledek do party</label>
+          <div class="share-row">
+            <input id="ovShare" readonly aria-label="Text výsledku ke zkopírování">
+            <button class="btn ghost" id="btnCopy" type="button">Zkopírovat</button>
+          </div>
+        </div>
+        <button class="btn" id="btnAgain" type="button">Znovu na trasu</button>
+      </section>
+
+      <!-- SCORES -->
+      <section class="screen" id="scrScores" hidden>
+        <h1 class="logo" style="font-size:36px">Nejlepší<em style="font-size:1.05em">Jízdy</em></h1>
+        <div class="scorewrap"><table class="scores"><tbody id="scoreBody"></tbody></table></div>
+        <button class="btn" id="btnBack" type="button">Zpět</button>
+        <button class="btn ghost" id="btnClear" type="button">Vymazat tabulku</button>
+      </section>
+    </div>
+  </div>
+
+  <aside id="docket">
+    <div>
+      <h2>Dodací<br><span>list</span></h2>
+      <div class="docket-sub">Doprava &middot; hydraulická ruka</div>
+    </div>
+    <div class="rule"></div>
+
+    <div class="sec-head take"><span class="mark">+</span>Naložit rukou<span class="pts">+150 bodů</span></div>
+    <div class="row"><canvas class="ico" data-kind="take" data-type="bricks"></canvas>Paleta cihel<span class="val">150</span></div>
+    <div class="row"><canvas class="ico" data-kind="take" data-type="cement"></canvas>Cement v pytlích<span class="val">150</span></div>
+    <div class="row"><canvas class="ico" data-kind="take" data-type="bigbag"></canvas>Big bag<span class="val">150</span></div>
+    <div class="row"><canvas class="ico" data-kind="take" data-type="pallets"></canvas>Stoh prázdných palet<span class="val">150</span></div>
+    <div class="row bonus"><canvas class="ico" data-kind="take" data-type="dek"></canvas>Prémie DEK<span class="val"><em>3&times;</em>450</span></div>
+    <div class="rule thin"></div>
+
+    <div class="sec-head avoid"><span class="mark">×</span>Vyhnout se<span class="pts">−1 pneumatika</span></div>
+    <div class="row"><canvas class="ico" data-kind="avoid" data-type="wall"></canvas>Vystavěná zeď</div>
+    <div class="row"><canvas class="ico" data-kind="avoid" data-type="tree"></canvas>Strom</div>
+    <div class="row"><canvas class="ico" data-kind="avoid" data-type="pole"></canvas>Sloup</div>
+    <div class="rule thin"></div>
+
+    <div class="sec-label">Sazebník</div>
+    <div class="row">Ujetá vzdálenost<span class="val">40 bodů / km</span></div>
+    <div class="rule thin"></div>
+
+    <div class="sec-label">Ovládání</div>
+    <div class="row"><kbd>◀ ▶</kbd><kbd>A D</kbd><span class="val" style="font-weight:500">řízení</span></div>
+    <div class="row"><kbd>▲ ▼</kbd><kbd>W S</kbd><span class="val" style="font-weight:500">plyn / brzda</span></div>
+    <div class="row"><kbd>P</kbd><kbd>M</kbd><span class="val" style="font-weight:500">pauza / zvuk</span></div>
+
+    <div class="stamp">Náklad zajištěn</div>
+  </aside>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   DEK — Hydraulická jízda
+   Top-down arkáda ve stylu GTA2. Vše kresleno proceduálně.
+   ============================================================ */
+
+const W = 480, H = 800;
+const cv  = document.getElementById('game');
+let   ctx = cv.getContext('2d');
+const mainCtx = ctx;
+
+const ROAD_L = 44, ROAD_R = 436, LANES = 4;
+const LANE_W = (ROAD_R - ROAD_L) / LANES;
+const laneX  = i => ROAD_L + LANE_W * (i + 0.5);
+
+const PX_PER_KM   = 5000;   // arkádové měřítko
+const PTS_PER_KM  = 40;
+const PTS_PER_ITEM= 150;
+const PTS_BONUS   = PTS_PER_ITEM*3;   // prémie DEK za trojnásobek
+const START_LIVES = 4;                // čtyři životy jako kola u auta
+
+const C = {
+  asphalt:'#33373d', asphaltDk:'#2b2f34', asphaltLt:'#3b4046',
+  paint:'#e6e2d6', paintDim:'#c4c0b4',
+  dirt:'#4a4238', dirtDk:'#3c3529', grass:'#3c5230', grassDk:'#2e4025',
+  red:'#e2001a', redDk:'#9d0013', redLt:'#ff2b3f',
+  hiVis:'#f5c518', hiVisDk:'#b8920c',
+  ink:'#14161a', steel:'#6d7078', steelDk:'#4a4d54',
+  concrete:'#9a968c', concreteLt:'#b6b2a6', concreteDk:'#726f67',
+  wood:'#c19a5e', woodDk:'#8a6b3c',
+  brick:'#b8462f', brickDk:'#8f3323', brickLt:'#cf5a41',
+  bag:'#d9d5c9', bagDk:'#a9a396',
+  big:'#8f9aa6', bigLt:'#b9c2cb', bigDk:'#5f6a75',
+  white:'#f2efe7'
+};
+
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const lerp  = (a,b,t)=> a+(b-a)*t;
+const rnd   = (a=1,b=0)=> b + Math.random()*(a-b);
+const pick  = arr => arr[(Math.random()*arr.length)|0];
+
+/* ------------------------------------------------------------
+   ZVUK — WebAudio, žádné externí soubory
+   ------------------------------------------------------------ */
+const Sfx = {
+  on:true, ac:null, master:null, engGain:null, oscA:null, oscB:null, filt:null, running:false,
+  init(){
+    if(this.ac) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    try{
+      this.ac = new AC();
+      this.master = this.ac.createGain();
+      this.master.gain.value = this.on ? 0.5 : 0;
+      this.master.connect(this.ac.destination);
+    }catch(e){ this.ac = null; }
+  },
+  resume(){ if(this.ac && this.ac.state === 'suspended') this.ac.resume(); },
+  setOn(v){
+    this.on = v;
+    if(this.master) this.master.gain.setTargetAtTime(v?0.5:0, this.ac.currentTime, 0.05);
+  },
+  startEngine(){
+    if(!this.ac || this.running) return;
+    const t = this.ac.currentTime;
+    this.filt = this.ac.createBiquadFilter();
+    this.filt.type='lowpass'; this.filt.frequency.value=760; this.filt.Q.value=6;
+    this.engGain = this.ac.createGain(); this.engGain.gain.value=0.0;
+    this.oscA = this.ac.createOscillator(); this.oscA.type='sawtooth'; this.oscA.frequency.value=58;
+    this.oscB = this.ac.createOscillator(); this.oscB.type='square';   this.oscB.frequency.value=29;
+    const gB = this.ac.createGain(); gB.gain.value=0.45;
+    this.oscA.connect(this.filt); this.oscB.connect(gB); gB.connect(this.filt);
+    this.filt.connect(this.engGain); this.engGain.connect(this.master);
+    this.oscA.start(t); this.oscB.start(t);
+    this.engGain.gain.setTargetAtTime(0.075, t, 0.4);
+    this.running = true;
+  },
+  stopEngine(){
+    if(!this.running) return;
+    const t=this.ac.currentTime;
+    this.engGain.gain.setTargetAtTime(0, t, 0.25);
+    try{ this.oscA.stop(t+1.2); this.oscB.stop(t+1.2); }catch(e){}
+    this.running=false;
+  },
+  engine(norm){
+    if(!this.running) return;
+    const t=this.ac.currentTime;
+    this.oscA.frequency.setTargetAtTime(52+norm*86, t, 0.12);
+    this.oscB.frequency.setTargetAtTime(26+norm*43, t, 0.12);
+    this.filt.frequency.setTargetAtTime(560+norm*900, t, 0.15);
+  },
+  blip(freq, dur, type, vol, slideTo){
+    if(!this.ac || !this.on) return;
+    const t=this.ac.currentTime;
+    const o=this.ac.createOscillator(), g=this.ac.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(freq,t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.16, t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t+dur+0.03);
+  },
+  pickup(){ this.blip(620,0.09,'square',0.13); setTimeout(()=>this.blip(930,0.12,'square',0.11),70); },
+  bonus(){ [523,659,880,1174].forEach((f,i)=> setTimeout(()=>this.blip(f,0.14,'triangle',0.16), i*70)); },
+  crash(){
+    if(!this.ac || !this.on) return;
+    const t=this.ac.currentTime, len=0.55, sr=this.ac.sampleRate;
+    const buf=this.ac.createBuffer(1, (sr*len)|0, sr), d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++){ d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.2); }
+    const src=this.ac.createBufferSource(); src.buffer=buf;
+    const f=this.ac.createBiquadFilter(); f.type='lowpass';
+    f.frequency.setValueAtTime(1500,t); f.frequency.exponentialRampToValueAtTime(120,t+len);
+    const g=this.ac.createGain(); g.gain.value=0.42;
+    src.connect(f); f.connect(g); g.connect(this.master); src.start(t);
+    this.blip(140,0.3,'sawtooth',0.14,60);
+  },
+  over(){ [330,262,196,131].forEach((f,i)=> setTimeout(()=>this.blip(f,0.32,'sawtooth',0.15), i*150)); },
+  milestone(){ this.blip(880,0.1,'sine',0.1); setTimeout(()=>this.blip(1320,0.14,'sine',0.09),90); }
+};
+
+/* ------------------------------------------------------------
+   VSTUP
+   ------------------------------------------------------------ */
+const keys = Object.create(null);
+let pointerActive=false, pointerX=null, pointerY0=null, pointerThrottle=0;
+
+window.addEventListener('keydown', e=>{
+  const k=e.key.toLowerCase();
+  if(['arrowleft','arrowright','arrowup','arrowdown',' '].includes(k)) e.preventDefault();
+  keys[k]=true;
+  if(k==='p') togglePause();
+  if(k==='m') toggleSound();
+  if(k==='escape' && game.state==='playing') togglePause();
+});
+window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
+window.addEventListener('blur', ()=>{ for(const k in keys) keys[k]=false; });
+
+function canvasPoint(e){
+  const r=cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H };
+}
+cv.addEventListener('pointerdown', e=>{
+  if(game.state!=='playing') return;
+  cv.setPointerCapture(e.pointerId);
+  const p=canvasPoint(e); pointerActive=true; pointerX=p.x; pointerY0=p.y; pointerThrottle=0;
+  e.preventDefault();
+});
+cv.addEventListener('pointermove', e=>{
+  if(!pointerActive) return;
+  const p=canvasPoint(e); pointerX=p.x;
+  pointerThrottle = clamp((pointerY0-p.y)/140, -1, 1);
+  e.preventDefault();
+});
+const endPointer = ()=>{ pointerActive=false; pointerX=null; pointerThrottle=0; };
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+
+/* ------------------------------------------------------------
+   STAV HRY
+   ------------------------------------------------------------ */
+const ITEM_TYPES = ['bricks','cement','bigbag','pallets'];
+
+const game = {
+  state:'menu',            // menu | playing | paused | over | scores
+  dist:0, km:0, items:0, cargoPts:0, score:0,
+  lives:START_LIVES, diff:0, speed:300, throttle:0,
+  shake:0, flash:0, nextSpawn:0, nextBonus:1500,
+  nightT:0, lastMilestone:0, time:0
+};
+
+const truck = {
+  x:laneX(1), y:648, w:54, len:104, vx:0, tilt:0,
+  invuln:0, load:[], armAng:Math.PI/2, armTarget:Math.PI/2, armHold:0, bounce:0
+};
+
+let ents=[], decor=[], flying=[], parts=[], floats=[];
+
+function resetGame(){
+  game.dist=0; game.km=0; game.items=0; game.cargoPts=0; game.score=0;
+  game.lives=START_LIVES; game.diff=0; game.speed=300; game.throttle=0;
+  game.shake=0; game.flash=0; game.nextSpawn=260; game.nextBonus=1600;
+  game.nightT=0; game.lastMilestone=0; game.time=0;
+  truck.x=laneX(1); truck.vx=0; truck.tilt=0; truck.invuln=0;
+  truck.load=[]; truck.armAng=Math.PI/2; truck.armTarget=Math.PI/2; truck.armHold=0; truck.bounce=0;
+  ents=[]; decor=[]; flying=[]; parts=[]; floats=[];
+  for(let i=0;i<14;i++) decor.push(mkDecor(-i*140 + rnd(H+200,-200)));
+}
+
+/* ------------------------------------------------------------
+   GENEROVÁNÍ SVĚTA
+   ------------------------------------------------------------ */
+const SIZES = {
+  bricks:{w:78,h:60,cw:70,ch:52},
+  cement:{w:78,h:60,cw:70,ch:52},
+  bigbag:{w:66,h:66,cw:60,ch:60},
+  pallets:{w:78,h:58,cw:70,ch:50},
+  dek:{w:74,h:46,cw:68,ch:42},
+  wall:{w:190,h:40,cw:186,ch:34},
+  tree:{w:82,h:82,cw:62,ch:62},
+  pole:{w:46,h:46,cw:38,ch:38}
+};
+
+function mkEnt(kind,type,x,y){
+  const s=SIZES[type];
+  return {kind,type,x,y,w:s.w,h:s.h,cw:s.cw,ch:s.ch,seed:Math.random()*6.283,spin:rnd(0.6,-0.6)};
+}
+function mkDecor(y){
+  const side = Math.random()<0.5 ? -1 : 1;
+  const t = Math.random();
+  const type = t<0.42?'bush' : t<0.72?'tree' : t<0.88?'lamp' : 'billboard';
+  const off = type==='billboard' ? 4 : rnd(15,1);
+  const x = side<0 ? ROAD_L-16-off : ROAD_R+16+off;
+  return {type,x,y,side,seed:Math.random()*6.283,s:rnd(1.15,0.8)};
+}
+
+function countFree(a){ let n=0; for(const v of a) if(v) n++; return n; }
+
+function spawnRow(){
+  const free=[true,true,true,true];
+  const y=-130;
+  const d=game.diff;
+  const grace = game.dist < 900;      // rozjezd bez překážek
+  let obs=0;
+  const maxObs = grace ? 0 : 1 + Math.floor(Math.random()*(1 + d*1.9));
+
+  // zeď přes dva pruhy
+  if(!grace && Math.random() < 0.20 + d*0.14){
+    const i=(Math.random()*3)|0;
+    if(free[i] && free[i+1] && countFree(free)-2 >= 1){
+      free[i]=free[i+1]=false; obs+=2;
+      ents.push(mkEnt('obs','wall',(laneX(i)+laneX(i+1))/2, y));
+    }
+  }
+  // stromy a sloupy
+  let guard=0;
+  while(obs<maxObs && countFree(free)>1 && guard++<8){
+    const cand=[]; for(let i=0;i<LANES;i++) if(free[i]) cand.push(i);
+    const i=pick(cand); free[i]=false; obs++;
+    ents.push(mkEnt('obs', Math.random()<0.5?'tree':'pole', laneX(i)+rnd(16,-16), y+rnd(30,-30)));
+  }
+  // materiál ve volných pruzích
+  const empty=[];
+  for(let i=0;i<LANES;i++){
+    if(!free[i]) continue;
+    if(Math.random() < 0.46 + d*0.16){
+      ents.push(mkEnt('item', pick(ITEM_TYPES), laneX(i)+rnd(12,-12), y+rnd(40,-40)));
+    } else empty.push(i);
+  }
+  // prémie DEK — vždy v samostatném pruhu a s odstupem
+  if(game.dist > game.nextBonus && empty.length){
+    ents.push(mkEnt('item','dek', laneX(pick(empty)), y-190));
+    game.nextBonus = game.dist + rnd(2600,1500);
+  }
+}
+
+/* ------------------------------------------------------------
+   EFEKTY
+   ------------------------------------------------------------ */
+function burst(x,y,color,n,spd){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*6.283, v=rnd(spd,spd*0.3);
+    parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(0.8,0.3),max:0.8,
+                s:rnd(5,2),color,rot:Math.random()*6.283,vr:rnd(9,-9)});
+  }
+}
+function floatText(x,y,txt,color){ floats.push({x,y,txt,color,life:1.1}); }
+
+/* ------------------------------------------------------------
+   AKTUALIZACE
+   ------------------------------------------------------------ */
+function hit(){
+  if(truck.invuln>0) return;
+  game.lives--; truck.invuln=2.4; game.shake=22; game.flash=0.55;
+  game.speed *= 0.5;
+  burst(truck.x, truck.y-40, C.hiVis, 26, 320);
+  burst(truck.x, truck.y-40, C.steel, 16, 240);
+  Sfx.crash();
+  if(truck.load.length) truck.load.splice(-1,1);
+  if(game.lives<=0) endRun();
+}
+
+function collect(e){
+  game.items++;
+  const dek = e.type==='dek';
+  const pts = dek ? PTS_BONUS : PTS_PER_ITEM;
+  game.cargoPts += pts;
+  floatText(e.x, e.y, '+'+pts, dek?C.redLt:C.hiVis);
+  burst(e.x, e.y, dek?C.redLt:C.hiVis, dek?30:14, dek?300:190);
+  flying.push({type:e.type, x:e.x, y:e.y, sx:e.x, sy:e.y, t:0, dur:0.42});
+  // ruka se otočí k materiálu
+  const dx=e.x-truck.x, dy=e.y-(truck.y-6);
+  truck.armTarget = Math.atan2(dy,dx);
+  truck.armHold = 0.55;
+  dek ? Sfx.bonus() : Sfx.pickup();
+}
+
+function update(dt){
+  game.time += dt;
+  game.diff = clamp(game.km/12, 0, 1);
+
+  // rychlost
+  let th = 0;
+  if(keys.arrowup||keys.w) th += 1;
+  if(keys.arrowdown||keys.s) th -= 1;
+  if(pointerActive) th = clamp(th + pointerThrottle, -1, 1);
+  game.throttle = lerp(game.throttle, th, 1-Math.pow(0.002,dt));
+  const base = 300 + 250*game.diff;
+  const want = base * (1 + 0.3*game.throttle);
+  game.speed = lerp(game.speed, want, 1-Math.pow(0.08,dt));
+
+  // řízení
+  const maxVx = 330 + 90*game.diff;
+  let vxWant = 0;
+  if(keys.arrowleft||keys.a) vxWant -= maxVx;
+  if(keys.arrowright||keys.d) vxWant += maxVx;
+  if(pointerActive && pointerX!=null) vxWant = clamp((pointerX-truck.x)*9, -maxVx, maxVx);
+  truck.vx = lerp(truck.vx, vxWant, 1-Math.pow(0.0009,dt));
+  truck.x += truck.vx*dt;
+
+  const minX = ROAD_L + truck.w/2 - 10, maxX = ROAD_R - truck.w/2 + 10;
+  if(truck.x<minX){ truck.x=minX; truck.vx*=-0.2; }
+  if(truck.x>maxX){ truck.x=maxX; truck.vx*=-0.2; }
+  truck.tilt = lerp(truck.tilt, clamp(truck.vx/maxVx,-1,1)*0.13, 1-Math.pow(0.001,dt));
+  truck.bounce = Math.sin(game.time*22)*0.6*(game.speed/560);
+
+  // vzdálenost a skóre
+  game.dist += game.speed*dt;
+  game.km = game.dist/PX_PER_KM;
+  game.score = Math.floor(game.km*PTS_PER_KM) + game.cargoPts;
+  if(Math.floor(game.km) > game.lastMilestone){
+    game.lastMilestone = Math.floor(game.km);
+    floatText(W/2, 210, game.lastMilestone+' km', C.white);
+    Sfx.milestone();
+  }
+
+  // spawn
+  game.nextSpawn -= game.speed*dt;
+  if(game.nextSpawn<=0){
+    spawnRow();
+    game.nextSpawn = Math.max(250, 470 - 190*game.diff) + rnd(90,-40);
+  }
+  if(Math.random() < dt*2.6) decor.push(mkDecor(-160));
+
+  // pohyb objektů
+  const dy = game.speed*dt;
+  for(const e of ents) e.y += dy;
+  for(const d of decor) d.y += dy;
+  ents = ents.filter(e=>e.y < H+180);
+  decor = decor.filter(d=>d.y < H+220);
+
+  // kolize
+  const tb = {x:truck.x, y:truck.y+truck.bounce, w:46, h:94};
+  for(let i=ents.length-1;i>=0;i--){
+    const e=ents[i];
+    if(Math.abs(e.y-tb.y) > (e.ch+tb.h)/2) continue;
+    if(Math.abs(e.x-tb.x) > (e.cw+tb.w)/2) continue;
+    if(e.kind==='item'){ collect(e); ents.splice(i,1); }
+    else { hit(); ents.splice(i,1); burst(e.x,e.y,e.type==='tree'?C.grass:C.concrete,18,260); }
+  }
+
+  // ruka
+  if(truck.armHold>0){ truck.armHold-=dt; if(truck.armHold<=0) truck.armTarget=Math.PI/2; }
+  let da = truck.armTarget - truck.armAng;
+  while(da>Math.PI) da-=6.283; while(da<-Math.PI) da+=6.283;
+  truck.armAng += da * (1-Math.pow(0.0005,dt));
+
+  // letící náklad
+  for(let i=flying.length-1;i>=0;i--){
+    const f=flying[i]; f.t+=dt;
+    const p=clamp(f.t/f.dur,0,1);
+    f.x = lerp(f.sx, truck.x, p);
+    f.y = lerp(f.sy + p*game.speed*f.dur*0.35, truck.y+16, p);
+    if(p>=1){
+      flying.splice(i,1);
+      truck.load.push(f.type);
+      if(truck.load.length>6) truck.load.shift();
+      game.shake=Math.max(game.shake,4);
+    }
+  }
+
+  // částice, texty
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt+dy*0.6; p.vx*=0.94; p.vy*=0.94;
+    p.rot+=p.vr*dt; p.life-=dt;
+    if(p.life<=0) parts.splice(i,1);
+  }
+  for(let i=floats.length-1;i>=0;i--){
+    const f=floats[i]; f.life-=dt; f.y-=42*dt;
+    if(f.life<=0) floats.splice(i,1);
+  }
+
+  if(truck.invuln>0) truck.invuln-=dt;
+  game.shake  = Math.max(0, game.shake - dt*36);
+  game.flash  = Math.max(0, game.flash - dt*1.6);
+
+  // den / noc — cyklus 2,5 km
+  const t=(game.km/2.5)%1;
+  game.nightT = 0.5 - 0.5*Math.cos(t*6.28318);
+
+  Sfx.engine(clamp((game.speed-260)/340,0,1));
+}
+
+/* ------------------------------------------------------------
+   KRESLENÍ — pomocné
+   ------------------------------------------------------------ */
+function rr(x,y,w,h,r){
+  const m=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+m,y);
+  ctx.lineTo(x+w-m,y); ctx.quadraticCurveTo(x+w,y,x+w,y+m);
+  ctx.lineTo(x+w,y+h-m); ctx.quadraticCurveTo(x+w,y+h,x+w-m,y+h);
+  ctx.lineTo(x+m,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-m);
+  ctx.lineTo(x,y+m); ctx.quadraticCurveTo(x,y,x+m,y);
+  ctx.closePath();
+}
+function box(x,y,w,h,fill,stroke,lw){
+  ctx.fillStyle=fill; ctx.fillRect(x,y,w,h);
+  if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=lw||1.5; ctx.strokeRect(x+ (lw||1.5)/2, y+(lw||1.5)/2, w-(lw||1.5), h-(lw||1.5)); }
+}
+// vypíše text na střed a v případě náhradního fontu ho vodorovně stlačí, aby se vešel
+function fitText(txt,x,y,maxW,px,family){
+  ctx.font = px+'px '+family;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const w=ctx.measureText(txt).width;
+  if(w>maxW && w>0){
+    ctx.save(); ctx.translate(x,y); ctx.scale(maxW/w,1); ctx.fillText(txt,0,0); ctx.restore();
+  } else ctx.fillText(txt,x,y);
+}
+function shadow(x,y,w,h,a){
+  ctx.fillStyle='rgba(0,0,0,'+(a||0.32)+')';
+  rr(x-w/2+5, y-h/2+7, w, h, 6); ctx.fill();
+}
+
+// asfaltová textura
+const noise = document.createElement('canvas');
+noise.width=noise.height=128;
+(function(){
+  const nc=noise.getContext('2d'), img=nc.createImageData(128,128);
+  for(let i=0;i<img.data.length;i+=4){
+    const v=200+Math.random()*55|0;
+    img.data[i]=img.data[i+1]=img.data[i+2]=v;
+    img.data[i+3]=Math.random()*26|0;
+  }
+  nc.putImageData(img,0,0);
+})();
+const noisePat = mainCtx.createPattern(noise,'repeat');
+
+/* ------------------------------------------------------------
+   SILNICE
+   ------------------------------------------------------------ */
+function drawRoad(){
+  // krajnice / tráva
+  ctx.fillStyle=C.grassDk; ctx.fillRect(0,0,W,H);
+  const g1=ctx.createLinearGradient(0,0,ROAD_L,0);
+  g1.addColorStop(0,C.grass); g1.addColorStop(1,C.dirt);
+  ctx.fillStyle=g1; ctx.fillRect(0,0,ROAD_L,H);
+  const g2=ctx.createLinearGradient(W,0,ROAD_R,0);
+  g2.addColorStop(0,C.grass); g2.addColorStop(1,C.dirt);
+  ctx.fillStyle=g2; ctx.fillRect(ROAD_R,0,W-ROAD_R,H);
+
+  // asfalt
+  const ga=ctx.createLinearGradient(ROAD_L,0,ROAD_R,0);
+  ga.addColorStop(0,C.asphaltDk); ga.addColorStop(.5,C.asphalt); ga.addColorStop(1,C.asphaltDk);
+  ctx.fillStyle=ga; ctx.fillRect(ROAD_L,0,ROAD_R-ROAD_L,H);
+
+  const off = game.dist % 128;
+  ctx.save(); ctx.beginPath(); ctx.rect(ROAD_L,0,ROAD_R-ROAD_L,H); ctx.clip();
+  ctx.translate(0, off);
+  ctx.fillStyle=noisePat; ctx.fillRect(ROAD_L,-140,ROAD_R-ROAD_L,H+280);
+  ctx.restore();
+
+  // podélné spáry
+  ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=1;
+  for(let i=1;i<LANES;i++){
+    const x=ROAD_L+LANE_W*i+0.5;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+
+  // přerušované čáry
+  const dash=46, gap=34, per=dash+gap;
+  const o = game.dist % per;
+  ctx.fillStyle=C.paintDim;
+  for(let i=1;i<LANES;i++){
+    const x=ROAD_L+LANE_W*i-3;
+    for(let y=-per+o; y<H+per; y+=per) ctx.fillRect(x,y,6,dash);
+  }
+  // krajní čáry
+  ctx.fillStyle=C.paint;
+  ctx.fillRect(ROAD_L+5,0,5,H);
+  ctx.fillRect(ROAD_R-10,0,5,H);
+  // obrubník
+  ctx.fillStyle='rgba(0,0,0,.28)';
+  ctx.fillRect(ROAD_L-4,0,4,H); ctx.fillRect(ROAD_R,0,4,H);
+}
+
+function drawDecor(d){
+  const x=d.x, y=d.y, s=d.s;
+  if(y<-140||y>H+160) return;
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  if(d.type==='bush'){
+    ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(3,4,13,10,0,0,6.283); ctx.fill();
+    ctx.fillStyle=C.grass; ctx.beginPath(); ctx.ellipse(0,0,13,10,0,0,6.283); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.07)'; ctx.beginPath(); ctx.ellipse(-3,-3,7,5,0,0,6.283); ctx.fill();
+  } else if(d.type==='tree'){
+    drawTreeShape(0,0,1.0,d.seed);
+  } else if(d.type==='lamp'){
+    const dir=d.side<0?1:-1;                    // rameno míří nad silnici
+    ctx.fillStyle='rgba(0,0,0,.34)';
+    ctx.beginPath(); ctx.ellipse(4,5,9,9,0,0,6.283); ctx.fill();
+    ctx.fillStyle=C.steelDk;                    // výložník
+    ctx.fillRect(dir>0?0:-22, -2.4, 22, 4.8);
+    ctx.fillStyle=C.steel; ctx.beginPath(); ctx.arc(0,0,8,0,6.283); ctx.fill();
+    ctx.fillStyle=C.steelDk; ctx.beginPath(); ctx.arc(0,0,5,0,6.283); ctx.fill();
+    ctx.fillStyle=C.concreteDk;                 // svítidlo
+    rr(dir>0?18:-26, -4.5, 8, 9, 2); ctx.fill();
+    if(game.nightT>0.3){
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      const lx=dir>0?22:-22;
+      const g=ctx.createRadialGradient(lx,0,1,lx,0,42);
+      g.addColorStop(0,'rgba(255,226,150,'+(0.34*game.nightT)+')');
+      g.addColorStop(1,'rgba(255,226,150,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(lx,0,42,0,6.283); ctx.fill();
+      ctx.restore();
+    }
+  } else {
+    // billboard DEK
+    const dir=d.side<0?1:-1;
+    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(-19,-11,42,28);
+    ctx.fillStyle=C.ink; ctx.fillRect(-22,-15,44,30);
+    ctx.fillStyle=C.red; ctx.fillRect(-19.5,-12.5,39,25);
+    ctx.fillStyle=C.white; fitText('DEK',0,1,34,17,'Anton, Impact, sans-serif');
+    ctx.fillStyle=C.steelDk; ctx.fillRect(dir*17,-2,5,20);
+  }
+  ctx.restore();
+}
+
+function drawTreeShape(x,y,s,seed){
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  ctx.fillStyle='rgba(0,0,0,.34)';
+  ctx.beginPath(); ctx.ellipse(6,8,32,29,0,0,6.283); ctx.fill();
+  const blobs=[[0,0,30],[-15,-9,19],[14,-11,17],[-11,13,17],[13,12,18]];
+  ctx.fillStyle='#2e4a26';
+  for(const b of blobs){ ctx.beginPath(); ctx.arc(b[0],b[1],b[2],0,6.283); ctx.fill(); }
+  ctx.fillStyle='#4f8340';
+  for(const b of blobs){ ctx.beginPath(); ctx.arc(b[0]-2,b[1]-2,b[2]*0.82,0,6.283); ctx.fill(); }
+  ctx.fillStyle='#67a352';
+  ctx.beginPath(); ctx.arc(-7+Math.sin(seed)*3,-8,12,0,6.283); ctx.fill();
+  ctx.fillStyle=C.woodDk; ctx.beginPath(); ctx.arc(0,0,6,0,6.283); ctx.fill();
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------
+   MATERIÁL A PŘEKÁŽKY
+   ------------------------------------------------------------ */
+function drawPalletBase(w,h){
+  box(-w/2,-h/2,w,h,C.woodDk);
+  ctx.fillStyle=C.wood;
+  const n=5, sw=(w-8)/n;
+  for(let i=0;i<n;i++) ctx.fillRect(-w/2+4+i*sw, -h/2+3, sw-3, h-6);
+  ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=2; ctx.strokeRect(-w/2+1,-h/2+1,w-2,h-2);
+}
+
+function drawItem(type,scale,seed){
+  ctx.save(); ctx.scale(scale,scale);
+  if(type==='bricks'){
+    const w=78,h=60;
+    drawPalletBase(w,h);
+    const cols=5, rows=4, bw=(w-14)/cols, bh=(h-14)/rows;
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const ox=(r%2)?bw*0.22:0;
+      const x=-w/2+7+c*bw+ox, y=-h/2+7+r*bh;
+      if(x+bw-2 > w/2-7) continue;
+      ctx.fillStyle=C.brickDk; ctx.fillRect(x,y,bw-2,bh-2);
+      ctx.fillStyle=C.brick;   ctx.fillRect(x,y,bw-3,bh-3);
+      ctx.fillStyle=C.brickLt; ctx.fillRect(x+1,y+1,bw-5,2);
+    }
+    ctx.strokeStyle='rgba(230,226,214,.55)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(-w/2+18,-h/2); ctx.lineTo(-w/2+18,h/2); ctx.moveTo(w/2-18,-h/2); ctx.lineTo(w/2-18,h/2); ctx.stroke();
+  }
+  else if(type==='cement'){
+    const w=78,h=60;
+    drawPalletBase(w,h);
+    for(let r=0;r<3;r++) for(let c=0;c<2;c++){
+      const bx=-w/2+8+c*32, by=-h/2+7+r*15;
+      ctx.fillStyle=C.bagDk; rr(bx+1,by+1,30,14,4); ctx.fill();
+      ctx.fillStyle=C.bag;   rr(bx,by,30,14,4); ctx.fill();
+      ctx.fillStyle=C.red;   ctx.fillRect(bx+5,by+5,20,3.2);
+      ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillRect(bx+3,by+2,24,1.6);
+    }
+    ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5; ctx.strokeRect(-w/2+1,-h/2+1,w-2,h-2);
+  }
+  else if(type==='bigbag'){
+    const s=66;
+    ctx.fillStyle=C.bigDk; rr(-s/2,-s/2,s,s,10); ctx.fill();
+    ctx.fillStyle=C.big;   rr(-s/2+2,-s/2+2,s-4,s-4,9); ctx.fill();
+    const gd=ctx.createRadialGradient(-8,-9,4,0,0,s*0.72);
+    gd.addColorStop(0,'rgba(255,255,255,.34)'); gd.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=gd; rr(-s/2+2,-s/2+2,s-4,s-4,9); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.28)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(-s/2+6,0); ctx.lineTo(s/2-6,0); ctx.moveTo(0,-s/2+6); ctx.lineTo(0,s/2-6); ctx.stroke();
+    ctx.strokeStyle=C.bigLt; ctx.lineWidth=5; ctx.lineCap='round';
+    const o=s/2-10;
+    [[-o,-o],[o,-o],[-o,o],[o,o]].forEach(p=>{
+      ctx.beginPath(); ctx.arc(p[0],p[1],6.5,0,6.283); ctx.stroke();
+    });
+    ctx.lineCap='butt';
+    ctx.fillStyle=C.red; fitText('DEK',0,-13,40,14,'Anton, Impact, sans-serif');
+  }
+  else if(type==='pallets'){
+    const w=78,h=58;
+    ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(-w/2+3,-h/2+3,w,h);
+    for(let layer=2;layer>=0;layer--){
+      const oy=-layer*3.2, ox=layer*1.6;
+      ctx.fillStyle=layer===0?C.wood:C.woodDk;
+      ctx.fillRect(-w/2+ox,-h/2+oy,w,h);
+      ctx.fillStyle=layer===0?'#d3ac6e':'#a07d47';
+      for(let i=0;i<5;i++) ctx.fillRect(-w/2+4+ox+i*((w-8)/5), -h/2+3+oy, (w-8)/5-3, h-6);
+      ctx.strokeStyle='rgba(0,0,0,.4)'; ctx.lineWidth=1.4;
+      ctx.strokeRect(-w/2+ox+0.7,-h/2+oy+0.7,w-1.4,h-1.4);
+    }
+    ctx.fillStyle='rgba(0,0,0,.32)'; fitText('EUR',0,0,30,11,'"Barlow Condensed", sans-serif');
+  }
+  else if(type==='dek'){
+    const w=74,h=46, t=game.time;
+    ctx.fillStyle=C.redDk; rr(-w/2,-h/2,w,h,7); ctx.fill();
+    const gd=ctx.createLinearGradient(0,-h/2,0,h/2);
+    gd.addColorStop(0,C.redLt); gd.addColorStop(0.5,C.red); gd.addColorStop(1,C.redDk);
+    ctx.fillStyle=gd; rr(-w/2+2,-h/2+2,w-4,h-4,6); ctx.fill();
+    ctx.save();
+    rr(-w/2+2,-h/2+2,w-4,h-4,6); ctx.clip();
+    const sx=((t*130+seed*60)%(w+70))-w/2-42;
+    const sg=ctx.createLinearGradient(sx,0,sx+34,0);
+    sg.addColorStop(0,'rgba(255,255,255,0)');
+    sg.addColorStop(.5,'rgba(255,255,255,.55)');
+    sg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=sg; ctx.save(); ctx.transform(1,0,-0.45,1,0,0); ctx.fillRect(sx,-h,40,h*3); ctx.restore();
+    ctx.restore();
+    ctx.fillStyle='rgba(255,255,255,.28)'; rr(-w/2+6,-h/2+5,w-12,7,3); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.35)'; fitText('DEK',0,4,58,34,'Anton, Impact, sans-serif');
+    ctx.fillStyle=C.white;             fitText('DEK',0,2,58,34,'Anton, Impact, sans-serif');
+    // jiskry
+    for(let i=0;i<3;i++){
+      const a=t*2.2+i*2.1+seed, r=w*0.42;
+      const px=Math.cos(a)*r, py=Math.sin(a*1.3)*h*0.42;
+      const sc=0.55+0.45*Math.sin(t*7+i);
+      ctx.fillStyle='rgba(255,255,255,'+(0.35+0.4*sc)+')';
+      ctx.beginPath();
+      ctx.moveTo(px,py-5*sc); ctx.lineTo(px+2*sc,py); ctx.lineTo(px,py+5*sc); ctx.lineTo(px-2*sc,py);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawObstacle(e){
+  if(e.type==='wall'){
+    const w=190,h=40;
+    ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fillRect(-w/2+5,-h/2+7,w,h);
+    box(-w/2,-h/2,w,h,C.concreteDk);
+    ctx.fillStyle=C.concrete; ctx.fillRect(-w/2+2,-h/2+2,w-4,h-4);
+    ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.6;
+    for(let r=0;r<3;r++){
+      const y=-h/2+4+r*11;
+      ctx.beginPath(); ctx.moveTo(-w/2+3,y); ctx.lineTo(w/2-3,y); ctx.stroke();
+      for(let x=-w/2+8+(r%2?13:0); x<w/2-6; x+=26){
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+11); ctx.stroke();
+      }
+    }
+    ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fillRect(-w/2+2,-h/2+2,w-4,3);
+    // výstražné konce
+    for(const sx of [-1,1]){
+      ctx.save(); ctx.translate(sx*(w/2-9),0);
+      for(let i=0;i<4;i++){
+        ctx.fillStyle = i%2 ? C.red : C.white;
+        ctx.fillRect(-8,-h/2+2+i*9,16,9);
+      }
+      ctx.strokeStyle='rgba(0,0,0,.4)'; ctx.lineWidth=1.4; ctx.strokeRect(-8,-h/2+2,16,36);
+      ctx.restore();
+    }
+  } else if(e.type==='tree'){
+    drawTreeShape(0,0,1,e.seed);
+  } else {
+    // sloup
+    ctx.fillStyle='rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(5,7,21,21,0,0,6.283); ctx.fill();
+    ctx.fillStyle=C.steelDk; ctx.beginPath(); ctx.arc(0,0,21,0,6.283); ctx.fill();
+    ctx.fillStyle=C.steel;   ctx.beginPath(); ctx.arc(0,0,17,0,6.283); ctx.fill();
+    ctx.fillStyle=C.concreteLt; ctx.beginPath(); ctx.arc(-2,-2,11,0,6.283); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,17,0,6.283); ctx.stroke();
+    for(let i=0;i<4;i++){
+      ctx.fillStyle = i%2 ? C.hiVis : C.ink;
+      ctx.save(); ctx.beginPath(); ctx.arc(0,0,21,0,6.283); ctx.clip();
+      ctx.fillRect(-21, -21+i*10.5, 42, 5);
+      ctx.restore();
+    }
+  }
+}
+
+function drawEntity(e){
+  if(e.y<-160||e.y>H+180) return;
+  ctx.save(); ctx.translate(e.x,e.y);
+  if(e.kind==='item'){
+    shadow(0,0,e.w*0.94,e.h*0.94,0.34);
+    const bob = e.type==='dek' ? Math.sin(game.time*3+e.seed)*2 : 0;
+    ctx.translate(0,bob);
+    drawItem(e.type,1,e.seed);
+  } else {
+    drawObstacle(e);
+  }
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------
+   NÁKLADNÍ AUTO S HYDRAULICKOU RUKOU
+   ------------------------------------------------------------ */
+function drawCrane(){
+  const a=truck.armAng;
+  ctx.save(); ctx.translate(0,-4);
+  // podstavec
+  ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(0,0,11,0,6.283); ctx.fill();
+  ctx.fillStyle=C.redDk; ctx.beginPath(); ctx.arc(0,0,9,0,6.283); ctx.fill();
+  ctx.save(); ctx.rotate(a);
+  // rameno 1
+  ctx.fillStyle=C.ink; rr(-3,-6,36,12,3); ctx.fill();
+  ctx.fillStyle=C.hiVis; rr(-2,-5,34,10,2.5); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.3)'; ctx.fillRect(0,-4,30,2.4);
+  // hydraulický válec
+  ctx.fillStyle=C.steel; rr(6,-2.2,18,4.4,2); ctx.fill();
+  // kloub
+  ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(32,0,5.5,0,6.283); ctx.fill();
+  ctx.fillStyle=C.steel; ctx.beginPath(); ctx.arc(32,0,3.4,0,6.283); ctx.fill();
+  // rameno 2
+  ctx.save(); ctx.translate(32,0); ctx.rotate(-0.42);
+  ctx.fillStyle=C.ink; rr(-2,-4.6,27,9.2,2.6); ctx.fill();
+  ctx.fillStyle=C.hiVisDk; rr(-1,-3.8,25,7.6,2); ctx.fill();
+  ctx.fillStyle=C.hiVis; ctx.fillRect(1,-3,20,3);
+  // hák
+  ctx.strokeStyle=C.steelDk; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(24,0); ctx.lineTo(30,0); ctx.stroke();
+  ctx.fillStyle=C.steel; ctx.beginPath(); ctx.arc(32,0,3.6,0,6.283); ctx.fill();
+  ctx.fillStyle=C.ink;   ctx.beginPath(); ctx.arc(32,0,1.6,0,6.283); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+  // krytka nad podstavcem
+  ctx.fillStyle=C.red; ctx.beginPath(); ctx.arc(0,0,5.5,0,6.283); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(-1.5,-1.5,2.4,0,6.283); ctx.fill();
+  ctx.restore();
+}
+
+function drawTruck(){
+  const blink = truck.invuln>0 && (Math.floor(game.time*14)%2===0);
+  ctx.save();
+  ctx.translate(truck.x, truck.y+truck.bounce);
+  // stín
+  ctx.save(); ctx.rotate(truck.tilt);
+  ctx.fillStyle='rgba(0,0,0,.42)';
+  rr(-truck.w/2+4, -truck.len/2+8, truck.w, truck.len, 8); ctx.fill();
+  ctx.restore();
+  ctx.rotate(truck.tilt);
+  if(blink) ctx.globalAlpha=0.42;
+
+  const w=truck.w, L=truck.len;
+
+  // kola
+  ctx.fillStyle=C.ink;
+  [[-w/2-1,-34],[w/2-8,-34],[-w/2-1,14],[w/2-8,14],[-w/2-1,32],[w/2-8,32]].forEach(p=>{
+    rr(p[0],p[1],10,17,3); ctx.fill();
+  });
+  ctx.fillStyle='#2a2d32';
+  [[-w/2+0.5,-33],[w/2-7.5,-33],[-w/2+0.5,15],[w/2-7.5,15],[-w/2+0.5,33],[w/2-7.5,33]].forEach(p=>{
+    ctx.fillRect(p[0],p[1],8,15);
+  });
+
+  // rám
+  ctx.fillStyle=C.ink; rr(-w/2+2,-L/2,w-4,L,7); ctx.fill();
+
+  // korba
+  ctx.fillStyle=C.steelDk; rr(-w/2+3, 0, w-6, L/2-3, 4); ctx.fill();
+  ctx.fillStyle='#5a5e66'; ctx.fillRect(-w/2+6, 3, w-12, L/2-9);
+  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1;
+  for(let i=1;i<6;i++){ const y=3+i*7; ctx.beginPath(); ctx.moveTo(-w/2+6,y); ctx.lineTo(w/2-6,y); ctx.stroke(); }
+  // bočnice
+  ctx.fillStyle=C.red; ctx.fillRect(-w/2+3,0,4,L/2-3); ctx.fillRect(w/2-7,0,4,L/2-3);
+  ctx.fillStyle='rgba(255,255,255,.22)'; ctx.fillRect(-w/2+3,0,4,2); ctx.fillRect(w/2-7,0,4,2);
+
+  // náklad na korbě
+  truck.load.forEach((t,i)=>{
+    const col = i%2 ? 11 : -11, row = (i/2)|0;
+    ctx.save(); ctx.translate(col, 12+row*15);
+    drawItem(t, 0.28, i);
+    ctx.restore();
+  });
+
+  // kabina
+  const gy=ctx.createLinearGradient(-w/2,0,w/2,0);
+  gy.addColorStop(0,C.redDk); gy.addColorStop(.42,C.red); gy.addColorStop(.72,C.redLt); gy.addColorStop(1,C.redDk);
+  ctx.fillStyle=gy; rr(-w/2, -L/2, w, 46, 8); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=2; rr(-w/2+1,-L/2+1,w-2,44,7); ctx.stroke();
+  // čelní sklo
+  ctx.fillStyle='#1a2027'; rr(-w/2+7,-L/2+6,w-14,15,4); ctx.fill();
+  ctx.fillStyle='rgba(150,190,225,.28)'; rr(-w/2+8,-L/2+7,w-16,7,3); ctx.fill();
+  // střešní pruh + majáky
+  ctx.fillStyle=C.white; ctx.fillRect(-w/2+8,-L/2+25,w-16,7);
+  ctx.fillStyle=C.red; fitText('DEK',0,-L/2+28.6,w-20,8,'Anton, Impact, sans-serif');
+  const bl=(Math.floor(game.time*6)%2)===0;
+  ctx.fillStyle=bl?C.hiVis:C.hiVisDk;
+  ctx.fillRect(-w/2+5,-L/2+3.5,7,4); ctx.fillRect(w/2-12,-L/2+3.5,7,4);
+  // zrcátka
+  ctx.fillStyle=C.ink; ctx.fillRect(-w/2-6,-L/2+12,6,4); ctx.fillRect(w/2,-L/2+12,6,4);
+  // světla
+  ctx.fillStyle='#fff6d8'; ctx.fillRect(-w/2+4,-L/2+0.5,9,4); ctx.fillRect(w/2-13,-L/2+0.5,9,4);
+  // výfuk
+  ctx.fillStyle=C.steelDk; rr(w/2-9,-L/2+40,5,10,2); ctx.fill();
+
+  drawCrane();
+
+  // zadní světla
+  ctx.fillStyle= game.throttle<-0.15 ? '#ff4a4a' : '#8e1414';
+  ctx.fillRect(-w/2+5,L/2-4,10,3.5); ctx.fillRect(w/2-15,L/2-4,10,3.5);
+
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function drawHeadlights(){
+  const n=game.nightT;
+  if(n<0.18) return;
+  const a=(n-0.18)/0.82;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  ctx.translate(truck.x, truck.y+truck.bounce); ctx.rotate(truck.tilt);
+  for(const sx of [-15,15]){
+    const g=ctx.createLinearGradient(0,-truck.len/2,0,-truck.len/2-300);
+    g.addColorStop(0,'rgba(255,244,200,'+(0.30*a)+')');
+    g.addColorStop(1,'rgba(255,244,200,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.moveTo(sx-7,-truck.len/2);
+    ctx.lineTo(sx-72,-truck.len/2-300);
+    ctx.lineTo(sx+72,-truck.len/2-300);
+    ctx.lineTo(sx+7,-truck.len/2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------
+   HUD
+   ------------------------------------------------------------ */
+function setLS(v){ try{ ctx.letterSpacing = v; }catch(e){} }
+
+function drawTire(x,y,alive,sc){
+  ctx.save(); ctx.translate(x,y); if(sc) ctx.scale(sc,sc);
+  ctx.fillStyle='rgba(0,0,0,.45)'; ctx.beginPath(); ctx.arc(2,3,17,0,6.283); ctx.fill();
+  if(alive){
+    ctx.fillStyle='#101215'; ctx.beginPath(); ctx.arc(0,0,17,0,6.283); ctx.fill();
+    ctx.strokeStyle='#3d424a'; ctx.lineWidth=2.6;
+    for(let i=0;i<12;i++){
+      const a=i/12*6.283;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*11.6, Math.sin(a)*11.6);
+      ctx.lineTo(Math.cos(a)*16.4, Math.sin(a)*16.4);
+      ctx.stroke();
+    }
+    ctx.strokeStyle='#26292e'; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.arc(0,0,16,0,6.283); ctx.stroke();
+    ctx.fillStyle=C.concreteLt; ctx.beginPath(); ctx.arc(0,0,9.4,0,6.283); ctx.fill();
+    ctx.fillStyle=C.concreteDk; ctx.beginPath(); ctx.arc(0,0,8.2,0,6.283); ctx.fill();
+    ctx.fillStyle=C.red; ctx.beginPath(); ctx.arc(0,0,5.8,0,6.283); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(-2.2,-2.6,2.1,0,6.283); ctx.fill();
+  }else{
+    ctx.save(); ctx.scale(1,0.55);
+    ctx.strokeStyle='rgba(120,120,120,.42)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(0,6,14,0,6.283); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle='rgba(226,0,26,.55)'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(8,8); ctx.moveTo(8,-8); ctx.lineTo(-8,8); ctx.stroke();
+    ctx.lineCap='butt';
+  }
+  ctx.restore();
+}
+
+function drawHUD(){
+  ctx.save();
+  // panel
+  const grd=ctx.createLinearGradient(0,0,0,96);
+  grd.addColorStop(0,'rgba(11,12,14,.72)'); grd.addColorStop(1,'rgba(11,12,14,0)');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,W,96);
+
+  ctx.textBaseline='top'; ctx.textAlign='left';
+  setLS('3px');
+  ctx.fillStyle='#8f8b82'; ctx.font='600 12px "Barlow Condensed", sans-serif';
+  ctx.fillText('SKÓRE',18,14);
+  setLS('0px');
+  ctx.fillStyle=C.white; ctx.font='42px Anton, Impact, sans-serif';
+  ctx.fillText(String(game.score),17,25);
+
+  const sw=ctx.measureText(String(game.score)).width;
+  setLS('2px');
+  ctx.fillStyle=C.hiVis; ctx.font='600 15px "Barlow Condensed", sans-serif';
+  ctx.fillText(game.km.toFixed(2)+' KM', 24+sw, 48);
+  setLS('0px');
+
+  // pneumatiky
+  for(let i=0;i<START_LIVES;i++) drawTire(W-29-i*35, 37, i < game.lives, 0.88);
+
+  // spodní lišta
+  const gb=ctx.createLinearGradient(0,H-78,0,H);
+  gb.addColorStop(0,'rgba(11,12,14,0)'); gb.addColorStop(1,'rgba(11,12,14,.78)');
+  ctx.fillStyle=gb; ctx.fillRect(0,H-78,W,78);
+
+  // rychloměr
+  const bx=18, by=H-34, bw=132, bh=9;
+  setLS('3px');
+  ctx.fillStyle='#8f8b82'; ctx.font='600 11px "Barlow Condensed", sans-serif';
+  ctx.fillText('RYCHLOST',bx,by-16);
+  setLS('0px');
+  ctx.fillStyle='rgba(11,12,14,.6)'; rr(bx,by,bw,bh,4); ctx.fill();
+  const nrm=clamp((game.speed-240)/380,0,1);
+  const g2=ctx.createLinearGradient(bx,0,bx+bw,0);
+  g2.addColorStop(0,C.hiVis); g2.addColorStop(1,C.red);
+  ctx.fillStyle=g2; rr(bx+1.5,by+1.5,(bw-3)*nrm,bh-3,3); ctx.fill();
+
+  // náklad
+  setLS('3px');
+  ctx.textAlign='right';
+  ctx.fillStyle='#8f8b82'; ctx.font='600 11px "Barlow Condensed", sans-serif';
+  ctx.fillText('NALOŽENO',W-18,by-16);
+  setLS('0px');
+  ctx.fillStyle=C.white; ctx.font='20px Anton, Impact, sans-serif';
+  ctx.fillText(String(game.items),W-18,by-6);
+  ctx.textAlign='left';
+  ctx.restore();
+}
+
+function drawFloats(){
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const f of floats){
+    const a=clamp(f.life,0,1);
+    ctx.globalAlpha=a;
+    ctx.font='26px Anton, Impact, sans-serif';
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillText(f.txt,f.x+2,f.y+2);
+    ctx.fillStyle=f.color; ctx.fillText(f.txt,f.x,f.y);
+  }
+  ctx.restore();
+}
+function drawParts(){
+  for(const p of parts){
+    ctx.save(); ctx.globalAlpha=clamp(p.life/p.max,0,1);
+    ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+    ctx.fillStyle=p.color; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+function drawFlying(){
+  for(const f of flying){
+    const p=clamp(f.t/f.dur,0,1);
+    const sc=lerp(1,0.3,p), lift=Math.sin(p*Math.PI)*16;
+    ctx.save(); ctx.translate(f.x,f.y-lift); ctx.rotate(p*0.7);
+    ctx.fillStyle='rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(3,lift*0.7+4,26*sc,18*sc,0,0,6.283); ctx.fill();
+    drawItem(f.type, sc, 0);
+    ctx.restore();
+  }
+}
+
+/* ------------------------------------------------------------
+   RENDER
+   ------------------------------------------------------------ */
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  if(game.shake>0.4){
+    ctx.translate(rnd(game.shake,-game.shake)*0.5, rnd(game.shake,-game.shake)*0.5);
+  }
+
+  drawRoad();
+  for(const d of decor) drawDecor(d);
+  for(const e of ents) drawEntity(e);
+  drawFlying();
+  drawTruck();
+  drawParts();
+
+  // noc
+  const n=game.nightT;
+  if(n>0.01){
+    ctx.fillStyle='rgba(8,14,34,'+(n*0.66)+')';
+    ctx.fillRect(0,0,W,H);
+    // měkké nasvícení okolí auta, aby zůstalo čitelné
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    const tg=ctx.createRadialGradient(truck.x,truck.y,10,truck.x,truck.y,110);
+    tg.addColorStop(0,'rgba(150,175,220,'+(0.22*n)+')');
+    tg.addColorStop(1,'rgba(150,175,220,0)');
+    ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(truck.x,truck.y,110,0,6.283); ctx.fill();
+    ctx.restore();
+    drawHeadlights();
+    // svit z DEK prémií
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    for(const e of ents){
+      if(e.type!=='dek') continue;
+      const g=ctx.createRadialGradient(e.x,e.y,2,e.x,e.y,64);
+      g.addColorStop(0,'rgba(255,60,80,'+(0.35*n)+')'); g.addColorStop(1,'rgba(255,60,80,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(e.x,e.y,64,0,6.283); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  drawFloats();
+  ctx.restore();
+
+  if(game.flash>0.01){
+    ctx.fillStyle='rgba(226,0,26,'+(game.flash*0.42)+')';
+    ctx.fillRect(0,0,W,H);
+  }
+  drawHUD();
+
+  // vinětace
+  const v=ctx.createRadialGradient(W/2,H/2,H*0.34,W/2,H/2,H*0.78);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.42)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+}
+
+/* ------------------------------------------------------------
+   HLAVNÍ SMYČKA
+   ------------------------------------------------------------ */
+let last=0, raf=0, dpr=1;
+function fit(){
+  dpr = Math.min(2, window.devicePixelRatio||1);
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', ()=>{ fit(); if(game.state!=='playing') render(); });
+
+function loop(ts){
+  raf = requestAnimationFrame(loop);
+  if(!last) last=ts;
+  let dt=(ts-last)/1000; last=ts;
+  dt=Math.min(dt,0.05);
+  if(game.state==='playing') update(dt);
+  else { game.shake=Math.max(0,game.shake-dt*36); game.flash=Math.max(0,game.flash-dt*1.6); }
+  render();
+}
+
+/* ------------------------------------------------------------
+   IKONKY DO DODACÍHO LISTU — kreslené stejným kódem jako objekty ve hře
+   ------------------------------------------------------------ */
+// poměr stran je u zdi jiný než u palety, proto zvlášť pro osu X a Y
+const ICON_SCALE = {
+  bricks:[.70,.70], cement:[.70,.70], pallets:[.70,.70], bigbag:[.74,.74], dek:[.76,.76],
+  wall:[.33,.95], tree:[.56,.56], pole:[.90,.90]
+};
+function renderIcon(cnv){
+  const kind=cnv.dataset.kind, type=cnv.dataset.type;
+  if(!kind||!type) return;
+  const r=Math.min(2, window.devicePixelRatio||1);
+  const cw=cnv.clientWidth||48, ch=cnv.clientHeight||34;
+  cnv.width=cw*r; cnv.height=ch*r;
+  const prev=ctx;
+  ctx = cnv.getContext('2d');
+  ctx.setTransform(r,0,0,r,0,0);
+  ctx.clearRect(0,0,cw,ch);
+  ctx.translate(cw/2, ch/2);
+  const sc=ICON_SCALE[type]||[.7,.7], k=Math.min(cw/68, ch/50);
+  ctx.scale(sc[0]*k, sc[1]*k);
+  if(kind==='take') drawItem(type,1,0.8);
+  else drawObstacle({type,seed:0.8});
+  ctx = prev;
+}
+function renderAllIcons(){ document.querySelectorAll('canvas.ico').forEach(renderIcon); }
+
+/* ------------------------------------------------------------
+   OBRAZOVKY
+   ------------------------------------------------------------ */
+const overlay=document.getElementById('overlay');
+const screens={
+  start:document.getElementById('scrStart'),
+  pause:document.getElementById('scrPause'),
+  over:document.getElementById('scrOver'),
+  scores:document.getElementById('scrScores')
+};
+function showScreen(name){
+  for(const k in screens) screens[k].hidden = (k!==name);
+  overlay.hidden = !name;
+}
+
+function startRun(){
+  Sfx.init(); Sfx.resume(); Sfx.startEngine();
+  resetGame();
+  game.state='playing';
+  showScreen(null);
+  last=0;
+}
+function togglePause(){
+  if(game.state==='playing'){ game.state='paused'; showScreen('pause'); }
+  else if(game.state==='paused'){ game.state='playing'; last=0; showScreen(null); Sfx.resume(); }
+}
+function driverName(){
+  const v=(document.getElementById('ovName').value||'').trim();
+  return (v || 'Řidič').slice(0,10).toUpperCase();
+}
+function updateShareText(){
+  document.getElementById('ovShare').value =
+    'DEK Hydraulická jízda — ' + driverName() + ': ' + game.score + ' bodů, ' +
+    game.km.toFixed(2).replace('.',',') + ' km, ' + game.items + ' naložených kusů';
+}
+
+function endRun(){
+  game.state='over';
+  Sfx.stopEngine(); Sfx.over();
+  document.getElementById('ovScore').textContent = game.score;
+  document.getElementById('ovKm').textContent = game.km.toFixed(2);
+  document.getElementById('ovItems').textContent = game.items;
+  updateShareText();
+  const best = loadScores()[0];
+  const el=document.getElementById('ovBreak');
+  el.textContent = (!best || game.score>best.score) ? 'Nový rekord na trase!' :
+                   ('Rekord drží ' + best.name + ' s ' + best.score + ' body');
+  document.getElementById('saveForm').hidden=false;
+  showScreen('over');
+}
+function toggleSound(){
+  Sfx.init(); Sfx.setOn(!Sfx.on);
+  document.getElementById('btnSound').textContent = 'Zvuk: ' + (Sfx.on?'zap':'vyp');
+}
+
+/* ------------------------------------------------------------
+   TABULKA SKÓRE
+   ------------------------------------------------------------ */
+const LS_KEY='dek.hydraulicka.jizda.scores';
+function loadScores(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(!raw) return [];
+    const a=JSON.parse(raw);
+    return Array.isArray(a)?a:[];
+  }catch(e){ return []; }
+}
+function saveScores(a){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(a.slice(0,10))); }catch(e){}
+}
+let lastSavedStamp=null;
+function renderScores(){
+  const list=loadScores();
+  const tb=document.getElementById('scoreBody');
+  tb.innerHTML='';
+  if(!list.length){
+    const tr=document.createElement('tr');
+    const td=document.createElement('td');
+    td.colSpan=4; td.style.textAlign='center'; td.style.color='#7f7c74';
+    td.textContent='Zatím žádná zapsaná jízda.';
+    tr.appendChild(td); tb.appendChild(tr); return;
+  }
+  list.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    if(r.stamp && r.stamp===lastSavedStamp) tr.className='me';
+    const c=(cls,txt)=>{ const td=document.createElement('td'); td.className=cls; td.textContent=txt; return td; };
+    tr.appendChild(c('p',(i+1)+'.'));
+    tr.appendChild(c('n',r.name));
+    tr.appendChild(c('d',(r.km||0).toFixed(1)+' km'));
+    tr.appendChild(c('s',r.score));
+    tb.appendChild(tr);
+  });
+}
+
+/* ------------------------------------------------------------
+   TLAČÍTKA
+   ------------------------------------------------------------ */
+document.getElementById('btnStart').addEventListener('click', startRun);
+document.getElementById('btnAgain').addEventListener('click', startRun);
+document.getElementById('btnResume').addEventListener('click', togglePause);
+document.getElementById('btnPause').addEventListener('click', ()=>{
+  if(game.state==='playing'||game.state==='paused') togglePause();
+});
+document.getElementById('btnSound').addEventListener('click', toggleSound);
+document.getElementById('btnQuit').addEventListener('click', ()=>{
+  Sfx.stopEngine(); game.state='menu'; resetGame(); showScreen('start');
+});
+document.getElementById('btnScoresFromStart').addEventListener('click', ()=>{
+  renderScores(); game.state='scores'; showScreen('scores');
+});
+document.getElementById('btnBack').addEventListener('click', ()=>{
+  if(game.lives<=0 && game.dist>0){ showScreen('over'); game.state='over'; }
+  else { showScreen('start'); game.state='menu'; }
+});
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  renderScores();
+});
+document.getElementById('ovName').addEventListener('input', updateShareText);
+
+document.getElementById('btnCopy').addEventListener('click', async ()=>{
+  const btn=document.getElementById('btnCopy'), inp=document.getElementById('ovShare');
+  inp.focus(); inp.select(); inp.setSelectionRange(0, 999);
+  let ok=false;
+  try{ await navigator.clipboard.writeText(inp.value); ok=true; }
+  catch(err){ try{ ok=document.execCommand('copy'); }catch(e2){ ok=false; } }
+  btn.textContent = ok ? 'Zkopírováno' : 'Označeno — Ctrl+C';
+  setTimeout(()=>{ btn.textContent='Zkopírovat'; }, 2400);
+});
+
+document.getElementById('saveForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name=driverName();
+  const list=loadScores();
+  lastSavedStamp = game.score+'|'+game.km.toFixed(2)+'|'+name;
+  list.push({name, score:game.score, km:game.km, stamp:lastSavedStamp});
+  list.sort((a,b)=>b.score-a.score);
+  saveScores(list);
+  document.getElementById('saveForm').hidden=true;
+  renderScores(); game.state='scores'; showScreen('scores');
+});
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden && game.state==='playing') togglePause();
+});
+
+/* ------------------------------------------------------------
+   START
+   ------------------------------------------------------------ */
+fit();
+resetGame();
+renderAllIcons();
+showScreen('start');
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{ render(); renderAllIcons(); });
+}
+raf = requestAnimationFrame(loop);
+
+})();
+</script>
+
+</body>
+</html>
