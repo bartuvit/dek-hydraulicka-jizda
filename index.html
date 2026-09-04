@@ -106,6 +106,8 @@ body{
 .sec-head.take .mark{background:var(--hi-vis);color:#1d1f22}
 .sec-head.avoid{color:var(--dek-red)}
 .sec-head.avoid .mark{background:var(--dek-red);color:#fff}
+.sec-head.fuel{color:#1d7a4e}
+.sec-head.fuel .mark{background:#1d7a4e;color:#fff}
 .sec-head .pts{
   margin-left:auto;font-size:12px;font-weight:600;letter-spacing:.06em;
   text-transform:none;color:#8a867c;white-space:nowrap;
@@ -250,7 +252,7 @@ table.scores tr.me td.s{color:var(--dek-red)}
       <section class="screen" id="scrStart">
         <h1 class="logo">Hydraulická<em>Jízda</em></h1>
         <p class="tag">Stavebniny DEK &middot; divize doprava</p>
-        <p class="blurb">Naber palety hydraulickou rukou za jízdy, vyhni se zdem, stromům a sloupům. Každý úsek se jede rychleji. Čtyři pneumatiky = čtyři životy.</p>
+        <p class="blurb">Naber palety hydraulickou rukou za jízdy, vyhni se zdem, stromům a sloupům a hlídej nádrž — jednou za čas musíš projet čerpací stanicí. Každý úsek se jede rychleji.</p>
         <button class="btn" id="btnStart" type="button">Nastartovat</button>
         <ul class="keylist">
           <li><span><kbd>◀</kbd><kbd>▶</kbd></span><span class="hint">řízení</span></li>
@@ -324,9 +326,14 @@ table.scores tr.me td.s{color:var(--dek-red)}
     <div class="row"><canvas class="ico" data-kind="avoid" data-type="pole"></canvas>Sloup</div>
     <div class="rule thin"></div>
 
+    <div class="sec-head fuel"><span class="mark">&rsaquo;</span>Natankovat<span class="pts">plná nádrž</span></div>
+    <div class="row"><canvas class="ico" data-kind="fuel" data-type="station"></canvas>Čerpací stanice</div>
+    <div class="rule thin"></div>
+
     <div class="sec-label">Sazebník</div>
     <div class="row">Ujetá vzdálenost<span class="val">40 bodů / km</span></div>
     <div class="row">Nový úsek<span class="val">každých 1,5 km</span></div>
+    <div class="row">Nádrž<span class="val">na ~1,6 km</span></div>
     <div class="rule thin"></div>
 
     <div class="sec-label">Ovládání</div>
@@ -361,6 +368,8 @@ const PTS_PER_KM  = 40;
 const PTS_PER_ITEM= 150;
 const PTS_BONUS   = PTS_PER_ITEM*3;   // prémie DEK za trojnásobek
 const START_LIVES = 4;                // čtyři životy jako kola u auta
+const TANK_PX     = 8200;             // dojezd na plnou nádrž (~1,64 km)
+const LOW_FUEL    = 0.28;
 
 const C = {
   asphalt:'#33373d', asphaltDk:'#2b2f34', asphaltLt:'#3b4046',
@@ -374,7 +383,8 @@ const C = {
   brick:'#b8462f', brickDk:'#8f3323', brickLt:'#cf5a41',
   bag:'#d9d5c9', bagDk:'#a9a396',
   big:'#8f9aa6', bigLt:'#b9c2cb', bigDk:'#5f6a75',
-  white:'#f2efe7'
+  white:'#f2efe7',
+  fuel:'#3fbf7f', fuelDk:'#1d7a4e'
 };
 
 const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
@@ -459,7 +469,9 @@ const Sfx = {
   },
   over(){ [330,262,196,131].forEach((f,i)=> setTimeout(()=>this.blip(f,0.32,'sawtooth',0.15), i*150)); },
   milestone(){ this.blip(880,0.1,'sine',0.1); setTimeout(()=>this.blip(1320,0.14,'sine',0.09),90); },
-  stageUp(){ [392,523,659,784].forEach((f,i)=> setTimeout(()=>this.blip(f,0.2,'square',0.12), i*95)); }
+  stageUp(){ [392,523,659,784].forEach((f,i)=> setTimeout(()=>this.blip(f,0.2,'square',0.12), i*95)); },
+  lowFuel(){ this.blip(720,0.1,'square',0.09); setTimeout(()=>this.blip(720,0.1,'square',0.09),160); },
+  refuel(){ [523,698,880].forEach((f,i)=> setTimeout(()=>this.blip(f,0.16,'sine',0.13), i*80)); }
 };
 
 /* ------------------------------------------------------------
@@ -510,7 +522,8 @@ const game = {
   lives:START_LIVES, diff:0, speed:300, throttle:0,
   shake:0, flash:0, nextSpawn:0, nextBonus:1500,
   nightT:0, lastMilestone:0, time:0,
-  stage:1, banner:null
+  stage:1, banner:null,
+  fuel:1, nextFuel:3200, refuel:0, lowBeep:0
 };
 
 const STAGE_NOTES = [
@@ -531,6 +544,7 @@ function resetGame(){
   game.shake=0; game.flash=0; game.nextSpawn=260; game.nextBonus=1600;
   game.nightT=0; game.lastMilestone=0; game.time=0;
   game.stage=1; game.banner=null;
+  game.fuel=1; game.nextFuel=3200; game.refuel=0; game.lowBeep=0;
   truck.x=laneX(1); truck.vx=0; truck.tilt=0; truck.invuln=0;
   truck.load=[]; truck.armAng=Math.PI/2; truck.armTarget=Math.PI/2; truck.armHold=0; truck.bounce=0;
   ents=[]; decor=[]; flying=[]; parts=[]; floats=[];
@@ -547,6 +561,7 @@ const SIZES = {
   pallets:{w:78,h:58,cw:70,ch:50},
   dek:{w:74,h:46,cw:68,ch:42},
   wall:{w:190,h:40,cw:186,ch:34},
+  station:{w:112,h:186,cw:104,ch:178},
   tree:{w:82,h:82,cw:62,ch:62},
   pole:{w:46,h:46,cw:38,ch:38}
 };
@@ -565,6 +580,12 @@ function mkDecor(y){
 }
 
 function countFree(a){ let n=0; for(const v of a) if(v) n++; return n; }
+
+function spawnStation(){
+  const lane=(Math.random()*LANES)|0;
+  ents.push(mkEnt('fuel','station', laneX(lane), -290));
+  game.nextFuel = game.dist + rnd(1.25,0.95)*PX_PER_KM;
+}
 
 function spawnRow(){
   const free=[true,true,true,true];
@@ -630,6 +651,15 @@ function hit(){
   if(game.lives<=0) endRun();
 }
 
+function outOfFuel(){
+  game.lives--; truck.invuln=2.2; game.shake=18; game.flash=0.5;
+  game.fuel=0.35; game.speed*=0.55;
+  game.banner={txt:'DOŠLO PALIVO', sub:'jedeš na rezervu', t:2.2};
+  burst(truck.x, truck.y+40, C.steel, 20, 220);
+  Sfx.crash();
+  if(game.lives<=0) endRun();
+}
+
 function collect(e){
   game.items++;
   const dek = e.type==='dek';
@@ -683,6 +713,20 @@ function update(dt){
   truck.tilt = lerp(truck.tilt, clamp(truck.vx/maxVx,-1,1)*0.13, 1-Math.pow(0.001,dt));
   truck.bounce = Math.sin(game.time*22)*0.6*(game.speed/560);
 
+  // palivo — spotřeba roste s rychlostí
+  const burn = (game.speed*dt) / TANK_PX * (0.85 + 0.45*clamp((game.speed-290)/360,0,1));
+  if(game.refuel>0){
+    game.refuel -= dt;
+    game.fuel = Math.min(1, game.fuel + dt*3.2);
+  } else {
+    game.fuel = Math.max(0, game.fuel - burn);
+    if(game.fuel<=0 && truck.invuln<=0) outOfFuel();
+  }
+  if(game.fuel<LOW_FUEL && game.refuel<=0){
+    game.lowBeep -= dt;
+    if(game.lowBeep<=0){ game.lowBeep=1.4; Sfx.lowFuel(); }
+  }
+
   // vzdálenost a skóre
   game.dist += game.speed*dt;
   game.km = game.dist/PX_PER_KM;
@@ -696,8 +740,13 @@ function update(dt){
   // spawn
   game.nextSpawn -= game.speed*dt;
   if(game.nextSpawn<=0){
-    spawnRow();
-    game.nextSpawn = Math.max(240, 480 - 250*game.diff) + rnd(90,-40);
+    if(game.dist > game.nextFuel){
+      spawnStation();
+      game.nextSpawn = 440;      // ať do stanice nezasahují překážky
+    } else {
+      spawnRow();
+      game.nextSpawn = Math.max(240, 480 - 250*game.diff) + rnd(90,-40);
+    }
   }
   if(Math.random() < dt*2.6) decor.push(mkDecor(-160));
 
@@ -714,6 +763,14 @@ function update(dt){
     const e=ents[i];
     if(Math.abs(e.y-tb.y) > (e.ch+tb.h)/2) continue;
     if(Math.abs(e.x-tb.x) > (e.cw+tb.w)/2) continue;
+    if(e.kind==='fuel'){
+      if(game.fuel<0.995 && game.refuel<=0){
+        floatText(e.x, e.y-70, 'PLNÁ NÁDRŽ', C.fuel);
+        Sfx.refuel();
+      }
+      game.refuel = 0.55;
+      continue;                       // stanicí se projíždí, nemizí
+    }
     if(e.kind==='item'){ collect(e); ents.splice(i,1); }
     else { hit(); ents.splice(i,1); burst(e.x,e.y,e.type==='tree'?C.grass:C.concrete,18,260); }
   }
@@ -1057,10 +1114,61 @@ function drawObstacle(e){
   }
 }
 
+function drawPumpIsland(x,y,w,h){
+  ctx.fillStyle='rgba(0,0,0,.4)'; rr(x+3,y+4,w,h,3); ctx.fill();
+  ctx.fillStyle=C.ink;   rr(x,y,w,h,3); ctx.fill();
+  ctx.fillStyle=C.red;   rr(x+1.5,y+1.5,w-3,h-3,2.5); ctx.fill();
+  ctx.fillStyle=C.white; ctx.fillRect(x+3,y+h*0.30,w-6,3);
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(x+2,y+2,w-4,2);
+  ctx.fillStyle=C.ink;   ctx.fillRect(x+3,y+h*0.52,w-6,h*0.22);
+}
+
+function drawStation(t){
+  const w=112,h=186;
+  // plocha stanice
+  ctx.fillStyle='#262b2a'; rr(-w/2,-h/2,w,h,6); ctx.fill();
+  ctx.fillStyle='rgba(63,191,127,.10)'; rr(-w/2,-h/2,w,h,6); ctx.fill();
+  // vodicí čáry
+  ctx.strokeStyle='rgba(63,191,127,'+(0.55+0.25*Math.sin(t*3))+')'; ctx.lineWidth=3;
+  ctx.setLineDash([12,9]); ctx.lineDashOffset=-t*30;
+  rr(-w/2+2,-h/2+2,w-4,h-4,5); ctx.stroke();
+  ctx.setLineDash([]);
+  // šipky ve směru jízdy
+  for(let i=0;i<3;i++){
+    const y=-h/2+46+i*34;
+    ctx.fillStyle='rgba(63,191,127,'+(0.28+0.22*Math.sin(t*4-i*0.8))+')';
+    ctx.beginPath(); ctx.moveTo(-13,y); ctx.lineTo(13,y); ctx.lineTo(0,y-15); ctx.closePath(); ctx.fill();
+  }
+  // stojany po stranách
+  drawPumpIsland(-w/2+5, -26, 15, 52);
+  drawPumpIsland( w/2-20, -26, 15, 52);
+  // nápis
+  ctx.fillStyle='rgba(11,12,14,.7)'; rr(-42,h/2-46,84,26,3); ctx.fill();
+  ctx.fillStyle=C.fuel; fitText('PALIVO', 0, h/2-33, 74, 22, 'Anton, Impact, sans-serif');
+  ctx.fillStyle=C.white; setLS('2px');
+  ctx.font='600 11px "Barlow Condensed", sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('PROJEĎ A NATANKUJ', 0, -h/2+16);
+  setLS('0px');
+}
+
+// kompaktní varianta do dodacího listu
+function drawStationIcon(){
+  const w=96,h=68;
+  ctx.fillStyle='#262b2a'; rr(-w/2,-h/2,w,h,6); ctx.fill();
+  ctx.strokeStyle=C.fuel; ctx.lineWidth=3.5; ctx.setLineDash([11,8]);
+  rr(-w/2+2,-h/2+2,w-4,h-4,5); ctx.stroke(); ctx.setLineDash([]);
+  drawPumpIsland(-w/2+6,-20,14,40);
+  drawPumpIsland( w/2-20,-20,14,40);
+  ctx.fillStyle=C.fuel; fitText('PALIVO',0,2,54,26,'Anton, Impact, sans-serif');
+}
+
 function drawEntity(e){
   if(e.y<-160||e.y>H+180) return;
   ctx.save(); ctx.translate(e.x,e.y);
-  if(e.kind==='item'){
+  if(e.kind==='fuel'){
+    drawStation(game.time+e.seed);
+  } else if(e.kind==='item'){
     shadow(0,0,e.w*0.94,e.h*0.94,0.34);
     const bob = e.type==='dek' ? Math.sin(game.time*3+e.seed)*2 : 0;
     ctx.translate(0,bob);
@@ -1241,6 +1349,65 @@ function drawTire(x,y,alive,sc){
   ctx.restore();
 }
 
+function drawFuelGauge(cx,cy,r){
+  const f=clamp(game.fuel,0,1);
+  const filling = game.refuel>0;
+  const low = f<LOW_FUEL && !filling;
+  const blink = low && (Math.floor(game.time*3.2)%2===0);
+  ctx.save(); ctx.translate(cx,cy);
+
+  // podklad
+  ctx.fillStyle='rgba(11,12,14,.72)';
+  ctx.beginPath(); ctx.arc(0,0,r+8,Math.PI,2*Math.PI);
+  ctx.lineTo(r+8,7); ctx.lineTo(-r-8,7); ctx.closePath(); ctx.fill();
+
+  const R=r-7, LW=6.5;
+  ctx.lineCap='butt';
+  // stupnice + pásmo rezervy
+  ctx.strokeStyle='#43474e'; ctx.lineWidth=LW;
+  ctx.beginPath(); ctx.arc(0,0,R,Math.PI,2*Math.PI); ctx.stroke();
+  ctx.strokeStyle='rgba(157,0,19,.85)';
+  ctx.beginPath(); ctx.arc(0,0,R,Math.PI,Math.PI+LOW_FUEL*Math.PI); ctx.stroke();
+  // náplň
+  if(f>0.004){
+    ctx.strokeStyle = filling ? C.fuel : (blink ? C.redLt : (low ? C.red : C.fuel));
+    ctx.lineWidth=LW;
+    ctx.beginPath(); ctx.arc(0,0,R,Math.PI,Math.PI+f*Math.PI); ctx.stroke();
+  }
+  // rysky
+  ctx.strokeStyle='rgba(242,239,231,.55)'; ctx.lineWidth=1.6;
+  for(let i=0;i<=4;i++){
+    const a=Math.PI+i/4*Math.PI, c=Math.cos(a), sn=Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(c*(R-LW/2-1), sn*(R-LW/2-1));
+    ctx.lineTo(c*(R-LW/2-6), sn*(R-LW/2-6));
+    ctx.stroke();
+  }
+  // E / F
+  ctx.font='600 11px "Barlow Condensed", sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=low?C.red:'#a19d94'; ctx.fillText('E', -R+3, -7);
+  ctx.fillStyle='#a19d94';           ctx.fillText('F',  R-3, -7);
+  // ručička
+  const a=Math.PI+f*Math.PI;
+  ctx.strokeStyle = blink ? C.hiVis : C.white; ctx.lineWidth=2.6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*(R-3), Math.sin(a)*(R-3)); ctx.stroke();
+  ctx.lineCap='butt';
+  ctx.fillStyle=C.ink;   ctx.beginPath(); ctx.arc(0,0,4.6,0,6.283); ctx.fill();
+  ctx.fillStyle=C.white; ctx.beginPath(); ctx.arc(0,0,2.6,0,6.283); ctx.fill();
+
+  // popisek
+  setLS('2px');
+  ctx.font='600 11px "Barlow Condensed", sans-serif';
+  ctx.textAlign='center';
+  if(filling){ ctx.fillStyle=C.fuel; ctx.fillText('TANKUJI', 0, -r-13); }
+  else if(low){ if(blink){ ctx.fillStyle=C.red; ctx.fillText('DOTANKOVAT', 0, -r-13); } }
+  else { ctx.fillStyle='#8f8b82'; ctx.fillText('PALIVO', 0, -r-13); }
+  setLS('0px');
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.restore();
+}
+
 function drawHUD(){
   ctx.save();
   // panel
@@ -1272,9 +1439,12 @@ function drawHUD(){
   gb.addColorStop(0,'rgba(11,12,14,0)'); gb.addColorStop(1,'rgba(11,12,14,.78)');
   ctx.fillStyle=gb; ctx.fillRect(0,H-78,W,78);
 
+  drawFuelGauge(56, H-22, 33);
+
   // rychloměr
-  const bx=18, by=H-34, bw=132, bh=9;
+  const bx=104, by=H-30, bw=118, bh=9;
   setLS('3px');
+  ctx.textBaseline='top';
   ctx.fillStyle='#8f8b82'; ctx.font='600 11px "Barlow Condensed", sans-serif';
   ctx.fillText('RYCHLOST',bx,by-16);
   setLS('0px');
@@ -1361,7 +1531,8 @@ function render(){
 
   drawRoad();
   for(const d of decor) drawDecor(d);
-  for(const e of ents) drawEntity(e);
+  for(const e of ents) if(e.kind==='fuel') drawEntity(e);
+  for(const e of ents) if(e.kind!=='fuel') drawEntity(e);
   drawFlying();
   drawTruck();
   drawParts();
@@ -1433,7 +1604,7 @@ function loop(ts){
 // poměr stran je u zdi jiný než u palety, proto zvlášť pro osu X a Y
 const ICON_SCALE = {
   bricks:[.70,.70], cement:[.70,.70], pallets:[.70,.70], bigbag:[.74,.74], dek:[.76,.76],
-  wall:[.33,.95], tree:[.56,.56], pole:[.90,.90]
+  wall:[.33,.95], tree:[.56,.56], pole:[.90,.90], station:[.62,.62]
 };
 function renderIcon(cnv){
   const kind=cnv.dataset.kind, type=cnv.dataset.type;
@@ -1449,6 +1620,7 @@ function renderIcon(cnv){
   const sc=ICON_SCALE[type]||[.7,.7], k=Math.min(cw/68, ch/50);
   ctx.scale(sc[0]*k, sc[1]*k);
   if(kind==='take') drawItem(type,1,0.8);
+  else if(kind==='fuel') drawStationIcon();
   else drawObstacle({type,seed:0.8});
   ctx = prev;
 }
